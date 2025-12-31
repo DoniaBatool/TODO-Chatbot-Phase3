@@ -208,3 +208,313 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 
 ## Code Standards
 See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.
+
+## Reusable Intelligence Skills (Phase 3)
+
+### ⚠️ CRITICAL REQUIREMENT - SKILL-FIRST APPROACH (MANDATORY)
+
+**RELIGIOUS ENFORCEMENT OF SKILLS IS REQUIRED BY PROJECT GUIDELINES**
+
+You have access to reusable intelligence skills that MUST be used for ALL Phase 3 development. This is a NON-NEGOTIABLE requirement from project teachers/instructors.
+
+**SKILL USAGE RULES (MUST FOLLOW):**
+
+1. **BEFORE implementing ANY feature:**
+   - ✅ FIRST: Identify which skills apply to the task
+   - ✅ SECOND: Display skill plan in terminal and wait for user approval
+   - ✅ THIRD: Execute using identified skills (invoke via Skill tool)
+   - ❌ NEVER implement manually if a skill exists
+
+2. **Terminal output MANDATORY:**
+   - Display: "🔧 Using Skill: /sp.skill-name"
+   - Show purpose, tasks covered, files to be generated
+   - Report completion status: "✅ Skill Complete"
+
+3. **If no skill exists:**
+   - Use `/sp.skill-creator` to create a new skill first
+   - Document the new skill in SKILLS.md
+   - THEN use the newly created skill
+
+4. **Skill invocation tracking:**
+   - Every feature MUST have a skills usage report
+   - Show which skills were used and why
+   - Show which skills were created for missing capabilities
+
+**ENFORCEMENT:**
+- Manual implementation when skill exists = VIOLATION of project guidelines
+- Skills are NOT optional - they are MANDATORY
+- Teachers require skill-based development approach
+- All work must demonstrate skill usage
+
+**WHY SKILLS ARE MANDATORY:**
+- Enforce constitution principles automatically
+- Ensure consistency across features
+- Reusable intelligence that improves over time
+- Educational requirement from instructors
+- Better code quality and testing coverage
+
+These skills MUST be used automatically when implementing Phase 3 features. Terminal output MUST show which skills are being used.
+
+### Core Implementation Skills
+
+**MCP Tool Builder** (`/sp.mcp-tool-builder`)
+- **When to use**: When creating any MCP tool for AI agent integration
+- **Auto-triggers**: When implementing task operations (add, list, complete, delete, update)
+- **Output**: MCP tool implementation, tests, contracts, registration
+
+**AI Agent Setup** (`/sp.ai-agent-setup`)
+- **When to use**: When configuring OpenAI Agents SDK
+- **Auto-triggers**: During chatbot initialization
+- **Output**: Agent configuration, tool bindings, tests
+
+**Chatbot Endpoint** (`/sp.chatbot-endpoint`)
+- **When to use**: When creating stateless chat API endpoints
+- **Auto-triggers**: When implementing chat functionality
+- **Output**: Endpoint implementation, JWT validation, tests
+
+**Conversation Manager** (`/sp.conversation-manager`)
+- **When to use**: When managing conversation state in database
+- **Auto-triggers**: With chatbot endpoint creation
+- **Output**: Conversation/Message models, manager implementation
+
+**Database Schema Expander** (`/sp.database-schema-expander`)
+- **When to use**: When adding new tables to database
+- **Auto-triggers**: When new data models needed
+- **Output**: SQLModel definitions, migrations, indexes
+
+### Phase 2 Foundation Skills
+
+These skills implement proven patterns from Phase 2 that are essential for Phase 3 development:
+
+**JWT Authentication** (`/sp.jwt-authentication`)
+- **When to use**: Setting up user authentication, protected endpoints
+- **Auto-triggers**: When implementing auth system
+- **Output**: JWT creation/verification, FastAPI dependency, login endpoint
+
+**User Isolation** (`/sp.user-isolation`)
+- **When to use**: Protecting user-owned resources, preventing data leakage
+- **Auto-triggers**: When implementing CRUD operations on user data
+- **Output**: Query scoping patterns, ownership checks, security logging
+
+**Password Security** (`/sp.password-security`)
+- **When to use**: Implementing signup/login with credentials
+- **Auto-triggers**: When user authentication with passwords needed
+- **Output**: bcrypt hashing utilities, signup/login endpoints, secure schemas
+
+**Pydantic Validation** (`/sp.pydantic-validation`)
+- **When to use**: Creating API endpoints with input validation
+- **Auto-triggers**: When defining FastAPI routes with request bodies
+- **Output**: Request/response DTOs, custom validators, FastAPI integration
+
+**Connection Pooling** (`/sp.connection-pooling`)
+- **When to use**: Setting up database connections for production
+- **Auto-triggers**: During database initialization
+- **Output**: Engine config, pool settings, health monitoring, session dependency
+
+**Transaction Management** (`/sp.transaction-management`)
+- **When to use**: Implementing database write operations
+- **Auto-triggers**: When creating/updating/deleting database records
+- **Output**: Try/commit/rollback patterns, multi-step atomicity, error handling
+
+### Workflow Automation Skills
+
+**New Feature Scaffolder** (`/sp.new-feature`)
+- **When to use**: Starting any new feature from scratch
+- **Auto-triggers**: Never (manual invocation only)
+- **Output**: Complete spec.md, plan.md, and tasks.md in one command
+- **Workflow**: Sequentially runs /sp.specify → /sp.plan → /sp.tasks with validation
+
+### Quality Assurance Skills
+
+**A/B Testing** (`/sp.ab-testing`)
+- **When to use**: When validating feature variations
+- **Manual trigger**: After feature implementation
+- **Output**: Test framework, variant configs, analytics
+
+**Edge Case Tester** (`/sp.edge-case-tester`)
+- **When to use**: After any feature implementation
+- **Auto-triggers**: Automatically after `/sp.implementation` completes
+- **Output**: Comprehensive edge case tests (57+ scenarios)
+
+### Meta Skills
+
+**Skill Creator** (`/sp.skill-creator`)
+- **When to use**: When new reusable capability needed
+- **Manual trigger**: User requests new skill
+- **Output**: New skill file, tests, documentation
+
+**Change Management** (`/sp.change-management`)
+- **When to use**: When modifying existing features
+- **Manual trigger**: User requests change to existing feature
+- **Output**: Change spec, impact analysis, updated files, rollback plan
+
+## Skill Usage Contract
+
+### Automatic Skill Selection
+
+Based on user prompts, automatically select and use relevant skills:
+
+**Examples:**
+1. **User**: "Create a new feature for user notifications"
+   - **Auto-use**: `/sp.new-feature` (creates spec.md, plan.md, tasks.md automatically)
+
+2. **User**: "Add task management chatbot"
+   - **Auto-use**: `/sp.database-schema-expander`, `/sp.mcp-tool-builder`, `/sp.ai-agent-setup`, `/sp.chatbot-endpoint`, `/sp.conversation-manager`
+
+3. **User**: "Implement add task functionality"
+   - **Auto-use**: `/sp.mcp-tool-builder`
+
+4. **User**: "Add due dates to existing tasks"
+   - **Auto-use**: `/sp.change-management`
+
+5. **After** `/sp.implementation` **completes**:
+   - **Auto-use**: `/sp.edge-case-tester`
+
+### Terminal Output Format
+
+When using skills, display:
+```text
+🔧 Using Skill: /sp.mcp-tool-builder
+
+Purpose: Build MCP tool for add_task operation
+Constitution Check: ✓ Passed
+Files Generated:
+  - backend/src/mcp_tools/add_task_tool.py
+  - tests/test_add_task_tool.py
+  - specs/tasks/contracts/mcp-tools/add_task.md
+
+✅ Skill Complete
+```
+
+### Skill Chaining
+
+Skills can chain automatically:
+```text
+Feature: AI Chatbot
+│
+├─> /sp.database-schema-expander
+│   ✅ Conversation & Message tables created
+│
+├─> /sp.mcp-tool-builder (5x for each tool)
+│   ✅ add_task, list_tasks, complete_task, delete_task, update_task
+│
+├─> /sp.ai-agent-setup
+│   ✅ OpenAI Agents SDK configured
+│
+├─> /sp.chatbot-endpoint
+│   ✅ Stateless chat endpoint at /api/{user_id}/chat
+│
+└─> /sp.edge-case-tester (automatic after implementation)
+    ✅ 57/57 edge cases passed
+```
+
+## Skill Integration Points
+
+### When to Use Each Skill
+
+| User Request Pattern | Skills to Use | Order |
+|---------------------|---------------|-------|
+| "Create chatbot" | database-schema-expander → mcp-tool-builder → ai-agent-setup → chatbot-endpoint → conversation-manager → edge-case-tester | Sequential |
+| "Add [MCP tool]" | mcp-tool-builder → edge-case-tester | Sequential |
+| "Change [existing feature]" | change-management | Standalone |
+| "Test [feature]" | edge-case-tester, ab-testing | Parallel |
+| "Create skill for [X]" | skill-creator | Standalone |
+
+### Constitution Enforcement
+
+All skills enforce constitution principles:
+- Stateless architecture
+- User isolation
+- MCP-first design
+- Test-driven development
+- Database-centric state
+
+Skill output includes constitution compliance verification.
+
+## Skill Learning
+
+**You MUST:**
+1. Recognize patterns in user requests
+2. Select appropriate skills automatically
+3. Display skill usage in terminal
+4. Chain skills when needed
+5. Use edge-case-tester after implementation
+6. Suggest ab-testing for new features
+
+**Remember:**
+- Skills are reusable intelligence
+- They enforce best practices automatically
+- They work across projects
+- They self-improve via skill-creator
+- They ensure constitution compliance
+
+When in doubt about which skill to use, refer to constitution.md "Reusable Intelligence Skills" section.
+
+## Phase 8-9 Implementation Requirements (SKILL-BASED)
+
+When implementing Phases 8 (Polish & Cross-Cutting Concerns) and Phase 9 (Deployment & Verification), you MUST:
+
+**STEP 1: Skill Planning (MANDATORY)**
+- Analyze all tasks in the phase
+- Map each task to existing skills OR identify need for new skills
+- Create terminal output showing skill execution plan
+- Wait for user approval before proceeding
+
+**STEP 2: Skill Creation (If Needed)**
+- Use `/sp.skill-creator` for any missing capabilities
+- Common Phase 8-9 skills to create:
+  - `/sp.performance-logger` - Performance monitoring setup
+  - `/sp.structured-logging` - Logging infrastructure
+  - `/sp.api-docs-generator` - API documentation automation
+  - `/sp.deployment-automation` - Deployment workflow
+  - `/sp.production-checklist` - Production readiness validation
+
+**STEP 3: Skill Execution**
+- Invoke each skill using the Skill tool
+- Display terminal output for each skill invocation
+- Track skill usage in implementation PHR
+
+**STEP 4: Skills Usage Report**
+- Document which skills were used
+- Document which skills were created
+- Report any manual tasks (with justification)
+
+**EXAMPLE - Phase 8 Performance Optimization:**
+```text
+🔧 Phase 8: Performance Optimization
+
+Skills Plan:
+1. /sp.connection-pooling → Verify pool configuration (T163-T164)
+2. /sp.skill-creator → Create /sp.performance-logger (T165-T166)
+3. /sp.performance-logger → Add execution time logging (T165-T166)
+4. /sp.ab-testing → Run load tests (T167-T169)
+
+Waiting for approval... ✋
+```
+
+**After user approval:**
+```text
+✅ User approved skill plan
+
+🔧 Using Skill: /sp.connection-pooling
+Purpose: Verify database connection pooling configuration
+Tasks: T163-T164
+Files: backend/src/db.py
+✅ Skill Complete
+
+🔧 Using Skill: /sp.skill-creator
+Purpose: Create performance logging skill
+Output: .claude/skills/sp.performance-logger.md
+✅ Skill Complete
+
+🔧 Using Skill: /sp.performance-logger
+Purpose: Add performance logging to all services
+Tasks: T165-T166
+Files: backend/src/routes/chat.py, backend/src/services/conversation_service.py
+✅ Skill Complete
+
+🔧 Using Skill: /sp.ab-testing
+Purpose: Load testing (100 concurrent requests)
+Tasks: T167-T169
+✅ Skill Complete
+```

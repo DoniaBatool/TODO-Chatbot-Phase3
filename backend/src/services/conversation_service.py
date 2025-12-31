@@ -1,0 +1,190 @@
+"""Conversation Service for managing chat conversations and messages.
+
+This service handles CRUD operations for conversations and messages,
+enforcing user isolation and stateless architecture principles.
+"""
+
+from datetime import datetime
+from typing import List, Optional
+
+from sqlmodel import Session, select
+
+from ..models import Conversation, Message
+from ..utils.performance import log_execution_time
+
+
+class ConversationService:
+    """Service for managing conversations and messages."""
+
+    def __init__(self, db: Session):
+        """Initialize service with database session.
+
+        Args:
+            db: SQLModel database session
+        """
+        self.db = db
+
+    @log_execution_time("create_conversation")
+    def create_conversation(self, user_id: str) -> Conversation:
+        """Create a new conversation for a user.
+
+        Args:
+            user_id: ID of the user creating the conversation
+
+        Returns:
+            Created Conversation object with ID
+
+        Example:
+            >>> service = ConversationService(db)
+            >>> conversation = service.create_conversation("user-123")
+            >>> assert conversation.id is not None
+        """
+        conversation = Conversation(
+            user_id=user_id,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        self.db.add(conversation)
+        self.db.commit()
+        self.db.refresh(conversation)
+        return conversation
+
+    def get_conversation(
+        self, conversation_id: int, user_id: str
+    ) -> Optional[Conversation]:
+        """Get a conversation by ID with user isolation.
+
+        Args:
+            conversation_id: ID of the conversation to retrieve
+            user_id: ID of the authenticated user
+
+        Returns:
+            Conversation object if found and owned by user, None otherwise
+
+        Security:
+            Only returns conversation if user_id matches owner.
+            Returns None (not 403) to prevent conversation enumeration.
+
+        Example:
+            >>> conversation = service.get_conversation(123, "user-123")
+            >>> if conversation:
+            ...     print(f"Found conversation {conversation.id}")
+        """
+        statement = select(Conversation).where(
+            Conversation.id == conversation_id,
+            Conversation.user_id == user_id
+        )
+        conversation = self.db.exec(statement).first()
+        return conversation
+
+    @log_execution_time("get_conversation_history")
+    def get_conversation_history(
+        self, conversation_id: int, user_id: str, limit: int = 50
+    ) -> List[Message]:
+        """Get conversation message history with user isolation.
+
+        Args:
+            conversation_id: ID of the conversation
+            user_id: ID of the authenticated user
+            limit: Maximum number of messages to return (default: 50)
+
+        Returns:
+            List of Message objects ordered by created_at ASC (chronological)
+            Returns empty list if conversation doesn't exist or user doesn't own it
+
+        Performance:
+            - Limited to last N messages for performance
+            - Uses index on (conversation_id, created_at)
+            - Returns in chronological order (oldest first)
+
+        Example:
+            >>> messages = service.get_conversation_history(123, "user-123", limit=50)
+            >>> for msg in messages:
+            ...     print(f"{msg.role}: {msg.content}")
+        """
+        # First verify user owns this conversation (security check)
+        conversation = self.get_conversation(conversation_id, user_id)
+        if not conversation:
+            return []
+
+        # Fetch last N messages in reverse chronological order
+        statement = (
+            select(Message)
+            .where(
+                Message.conversation_id == conversation_id,
+                Message.user_id == user_id
+            )
+            .order_by(Message.created_at.desc())
+            .limit(limit)
+        )
+        messages = self.db.exec(statement).all()
+
+        # Reverse to get chronological order (oldest first)
+        return list(reversed(messages))
+
+    @log_execution_time("add_message")
+    def add_message(
+        self, conversation_id: int, user_id: str, role: str, content: str
+    ) -> Message:
+        """Add a message to a conversation.
+
+        Args:
+            conversation_id: ID of the conversation
+            user_id: ID of the user (owner of conversation)
+            role: Message role ('user' or 'assistant')
+            content: Message text content
+
+        Returns:
+            Created Message object with ID
+
+        Raises:
+            ValueError: If role is not 'user' or 'assistant'
+
+        Security:
+            Assumes conversation ownership has been verified before calling.
+            For production, consider adding ownership check here too.
+
+        Example:
+            >>> message = service.add_message(
+            ...     conversation_id=123,
+            ...     user_id="user-123",
+            ...     role="user",
+            ...     content="Add task to buy milk"
+            ... )
+            >>> assert message.id is not None
+        """
+        message = Message(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            role=role,
+            content=content,
+            created_at=datetime.utcnow()
+        )
+
+        # Validate role
+        message.validate_role()
+
+        self.db.add(message)
+        self.db.commit()
+        self.db.refresh(message)
+        return message
+
+    def update_conversation_timestamp(self, conversation_id: int) -> None:
+        """Update conversation's updated_at timestamp.
+
+        Args:
+            conversation_id: ID of the conversation to update
+
+        Note:
+            This is called after adding messages to track last activity.
+            Uses direct UPDATE query for efficiency.
+
+        Example:
+            >>> service.update_conversation_timestamp(123)
+        """
+        statement = select(Conversation).where(Conversation.id == conversation_id)
+        conversation = self.db.exec(statement).first()
+        if conversation:
+            conversation.updated_at = datetime.utcnow()
+            self.db.add(conversation)
+            self.db.commit()
