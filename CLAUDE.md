@@ -518,3 +518,293 @@ Purpose: Load testing (100 concurrent requests)
 Tasks: T167-T169
 ✅ Skill Complete
 ```
+
+## Complete Skills Reference (ALL 31 Skills)
+
+**CRITICAL**: Before implementing ANYTHING, you MUST check `.claude/skills/` directory for applicable skills.
+
+**Location**: All skills are in `.claude/skills/` directory (31 total)
+**Constitution Reference**: See `.specify/memory/constitution.md` Section "Phase III+ Requirements: Reusable Intelligence Skills"
+
+---
+
+### 1️⃣ Workflow & Planning Skills (5 skills)
+
+**When user says**: "Create new feature", "Plan implementation", "Break down tasks"
+
+| Skill | File | When to Use |
+|-------|------|-------------|
+| `/sp.specify` | `.claude/skills/skill-creator.md` | Creating feature specifications |
+| `/sp.plan` | `.claude/skills/skill-creator.md` | Generating implementation plans |
+| `/sp.tasks` | `.claude/skills/skill-creator.md` | Breaking down into actionable tasks |
+| `/sp.implement` | `.claude/skills/skill-creator.md` | Executing implementation |
+| `/sp.new-feature` | `.claude/skills/new-feature.md` | Complete spec→plan→tasks in one workflow |
+
+**Auto-Use**: When user requests "new feature from scratch"
+
+---
+
+### 2️⃣ Core Implementation Skills - Phase III (5 skills)
+
+**When user says**: "Create chatbot", "Add MCP tool", "Add chat endpoint"
+
+| Skill | File | When to Use |
+|-------|------|-------------|
+| `/sp.mcp-tool-builder` | `.claude/skills/mcp-tool-builder.md` | Creating MCP tools (add_task, list_tasks, etc.) |
+| `/sp.ai-agent-setup` | `.claude/skills/ai-agent-setup.md` | Configuring OpenAI Agents SDK |
+| `/sp.chatbot-endpoint` | `.claude/skills/chatbot-endpoint.md` | Creating stateless chat API endpoints |
+| `/sp.conversation-manager` | `.claude/skills/conversation-manager.md` | Managing conversation state in database |
+| `/sp.database-schema-expander` | `.claude/skills/database-schema-expander.md` | Adding new database tables |
+
+**Auto-Use**: When user mentions "chatbot", "AI agent", "MCP tools", "conversation"
+
+---
+
+### 3️⃣ Foundation Skills - Phase II Patterns (6 skills)
+
+**When user says**: "Add authentication", "Secure user data", "Add validation"
+
+| Skill | File | When to Use |
+|-------|------|-------------|
+| `/sp.jwt-authentication` | `.claude/skills/jwt-authentication.md` | JWT creation/verification, protected endpoints |
+| `/sp.user-isolation` | `.claude/skills/user-isolation.md` | Protecting user-owned resources, preventing data leakage |
+| `/sp.password-security` | `.claude/skills/password-security.md` | bcrypt hashing, signup/login endpoints |
+| `/sp.pydantic-validation` | `.claude/skills/pydantic-validation.md` | Request/response DTOs, input validation |
+| `/sp.connection-pooling` | `.claude/skills/connection-pooling.md` | Database pool configuration, health monitoring |
+| `/sp.transaction-management` | `.claude/skills/transaction-management.md` | Try/commit/rollback patterns, atomicity |
+
+**Auto-Use**: When user mentions "auth", "security", "database", "validation"
+
+---
+
+### 4️⃣ Role-Based Development Skills (7 skills)
+
+**When user says**: "Implement backend", "Create UI", "Design system", "Deploy"
+
+| Skill | File | When to Use |
+|-------|------|-------------|
+| `/sp.backend-developer` | `.claude/skills/backend-developer.md` | Backend API implementation (FastAPI, SQLModel) |
+| `/sp.frontend-developer` | `.claude/skills/frontend-developer.md` | Frontend UI implementation (Next.js, React) |
+| `/sp.fullstack-architect` | `.claude/skills/fullstack-architect.md` | System design & end-to-end architecture |
+| `/sp.database-engineer` | `.claude/skills/database-engineer.md` | Database optimization, schema design, indexes |
+| `/sp.devops-engineer` | `.claude/skills/devops-engineer.md` | Infrastructure, Docker, CI/CD |
+| `/sp.security-engineer` | `.claude/skills/security-engineer.md` | OWASP audit, vulnerability scanning, security tests |
+| `/sp.uiux-designer` | `.claude/skills/uiux-designer.md` | Wireframes, user flows, component design |
+
+**Auto-Use**: Based on complexity - use appropriate role-based skill for implementation
+
+---
+
+### 5️⃣ Quality & Testing Skills (3 skills)
+
+**When user says**: "Test this feature", "Run A/B test", "Comprehensive testing"
+
+| Skill | File | When to Use |
+|-------|------|-------------|
+| `/sp.edge-case-tester` | `.claude/skills/edge-case-tester.md` | 57+ edge case scenarios (AUTO after /sp.implement) |
+| `/sp.ab-testing` | `.claude/skills/ab-testing.md` | A/B test framework, variant configs, analytics |
+| `/sp.qa-engineer` | `.claude/skills/qa-engineer.md` | Unit tests, integration tests, smoke tests, E2E |
+
+**Auto-Trigger**: `/sp.edge-case-tester` MUST run automatically after ANY implementation
+
+---
+
+### 6️⃣ Production & Deployment Skills (5 skills)
+
+**When user says**: "Add logging", "Optimize performance", "Deploy", "Production ready"
+
+| Skill | File | When to Use |
+|-------|------|-------------|
+| `/sp.performance-logger` | `.claude/skills/performance-logger.md` | Execution time logging, structured metrics |
+| `/sp.structured-logging` | `.claude/skills/structured-logging.md` | JSON logging, log aggregation compatibility |
+| `/sp.deployment-automation` | `.claude/skills/deployment-automation.md` | Deploy scripts, validation, health checks |
+| `/sp.production-checklist` | `.claude/skills/production-checklist.md` | Production readiness validation, checklists |
+| `/sp.vercel-deployer` | `.claude/skills/vercel-deployer.md` | Vercel deployment, environment config |
+
+**Auto-Use**: When user mentions "production", "deploy", "performance", "logging"
+
+---
+
+### 7️⃣ Specialized Utility Skills (5 skills)
+
+**When user says**: "Document API", "Modify feature", "Create skill", "GitHub operations"
+
+| Skill | File | When to Use |
+|-------|------|-------------|
+| `/sp.api-docs-generator` | `.claude/skills/api-docs-generator.md` | OpenAPI/Swagger docs, deployment guides |
+| `/sp.change-management` | `.claude/skills/change-management.md` | Modify existing features safely |
+| `/sp.skill-creator` | `.claude/skills/skill-creator.md` | Create new reusable skills |
+| `/sp.github-specialist` | `.claude/skills/github-specialist.md` | **GitHub operations, branch management, PRs, issues** |
+| `/sp.conversation-manager` | `.claude/skills/conversation-manager.md` | Conversation/Message models, chat state |
+
+**IMPORTANT**: Use `/sp.github-specialist` for ALL git/GitHub operations:
+- Branch merging/deletion
+- Push to remote
+- PR creation
+- Issue management
+- Release creation
+
+**Auto-Use**: When user mentions "git", "GitHub", "merge", "branch", "PR", "issue"
+
+---
+
+## Skills Discovery Protocol (MANDATORY)
+
+**Before implementing ANYTHING:**
+
+### Step 1: Check Skills Directory
+```bash
+ls .claude/skills/
+# Returns 31 skill files
+```
+
+### Step 2: Analyze User Request
+Identify keywords:
+- "chatbot" → ai-agent-setup, chatbot-endpoint, conversation-manager
+- "auth" → jwt-authentication, password-security, user-isolation
+- "test" → edge-case-tester, qa-engineer, ab-testing
+- "deploy" → deployment-automation, production-checklist, vercel-deployer
+- "git/GitHub" → github-specialist
+- "performance" → performance-logger, connection-pooling
+- "API" → backend-developer, api-docs-generator
+- "UI" → frontend-developer, uiux-designer
+
+### Step 3: Display Skill Plan
+```text
+🔧 Skills Analysis for: "[user request]"
+
+Applicable Skills Found:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. /sp.skill-name → Purpose
+2. /sp.skill-name → Purpose
+...
+
+Skills Execution Plan:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. /sp.skill-name → Task description
+2. /sp.skill-name → Task description
+...
+
+Approve? (yes/no) ✋
+```
+
+### Step 4: Wait for Approval
+User responds: "yes", "approved", "1" → Proceed
+
+### Step 5: Execute Skills Sequentially
+```text
+🔧 Using Skill: /sp.skill-name
+Purpose: [Clear purpose]
+Tasks: [Task IDs if applicable]
+Files Generated: [List of files]
+✅ Skill Complete
+```
+
+### Step 6: Document in PHR
+Add to PHR:
+```yaml
+skills_used:
+  - name: /sp.skill-name
+    purpose: [Purpose]
+    files: [Files modified/created]
+```
+
+---
+
+## Common Scenarios → Skills Mapping
+
+### Scenario 1: "Create AI chatbot"
+```
+/sp.database-schema-expander → Tables
+/sp.mcp-tool-builder (5x) → MCP tools
+/sp.ai-agent-setup → Agent config
+/sp.chatbot-endpoint → API
+/sp.conversation-manager → State
+/sp.edge-case-tester → Tests (auto)
+```
+
+### Scenario 2: "Add authentication"
+```
+/sp.database-schema-expander → Users table
+/sp.jwt-authentication → JWT setup
+/sp.password-security → Auth endpoints
+/sp.user-isolation → Protect data
+/sp.security-engineer → Audit
+```
+
+### Scenario 3: "Prepare for production"
+```
+/sp.security-engineer → Security audit
+/sp.performance-logger → Monitoring
+/sp.structured-logging → Logging
+/sp.api-docs-generator → Documentation
+/sp.deployment-automation → Deploy scripts
+/sp.qa-engineer → Smoke tests
+/sp.production-checklist → Validation
+```
+
+### Scenario 4: "Merge branches to main"
+```
+/sp.github-specialist → Branch operations
+  - Checkout main
+  - Merge feature branch
+  - Push to remote
+  - Delete feature branch
+```
+
+### Scenario 5: "Optimize performance"
+```
+/sp.connection-pooling → Pool config
+/sp.performance-logger → Execution logging
+/sp.database-engineer → Query optimization
+/sp.ab-testing → Load testing
+```
+
+---
+
+## Skill Usage Rules (MUST FOLLOW)
+
+### ✅ ALWAYS Use Skills When:
+- Creating new features
+- Modifying existing code
+- Adding authentication/security
+- Database operations
+- Testing and QA
+- Performance optimization
+- Production deployment
+- **Git/GitHub operations** (merge, push, branch, PR, issue)
+- Documentation generation
+
+### ❌ NEVER Do Manually When Skill Exists:
+- Manual git commands → Use `/sp.github-specialist`
+- Manual file creation → Use appropriate skill
+- Manual testing → Use `/sp.edge-case-tester` or `/sp.qa-engineer`
+- Manual deployment → Use `/sp.deployment-automation`
+
+### 🚨 Violations Result In:
+- IMMEDIATE STOP
+- Document violation
+- Redo using proper skill-based approach
+- Update constitution if needed
+
+---
+
+## Quick Reference: User Request → Skills
+
+| User Says | Use These Skills |
+|-----------|-----------------|
+| "Create chatbot" | ai-agent-setup, chatbot-endpoint, conversation-manager |
+| "Add authentication" | jwt-authentication, password-security, user-isolation |
+| "Test feature" | edge-case-tester, qa-engineer |
+| "Deploy to production" | deployment-automation, production-checklist |
+| "Merge branches" | **github-specialist** |
+| "Create PR" | **github-specialist** |
+| "Optimize performance" | performance-logger, connection-pooling |
+| "Add API endpoint" | backend-developer, pydantic-validation |
+| "Create UI" | frontend-developer, uiux-designer |
+| "Security audit" | security-engineer |
+| "Add logging" | structured-logging, performance-logger |
+
+---
+
+**REMEMBER**: Check `.claude/skills/` directory FIRST, display skill plan, wait for approval, then execute using Skill tool. NO manual implementation when skills exist!
