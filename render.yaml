@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: todo-chatbot-backend
+    env: python
+    region: oregon
+    plan: free
+    branch: main
+    buildCommand: pip install -r backend/requirements.txt && cd backend && alembic upgrade head
+    startCommand: cd backend && uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: todo-chatbot-db
+          property: connectionString
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://your-frontend.vercel.app
+      - key: PYTHONPATH
+        value: /opt/render/project/src/backend
+
+databases:
+  - name: todo-chatbot-db
+    databaseName: todo_chatbot
+    user: todo_user
+    plan: free
+    region: oregon

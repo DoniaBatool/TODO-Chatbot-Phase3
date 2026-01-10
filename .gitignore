@@ -145,3 +145,4 @@ ehthumbs_vista.db
 # Phase 2 Backup (don't commit backup)
 TODO-phase2-backup/
 *-backup/
+RENDER_DEPLOYMENT_GUIDE.md
