@@ -84,22 +84,31 @@ These FTE agents are specialized for frontend development tasks:
 
 ---
 
-### 3. Vercel Deployer (`/vercel-deployer`)
+### 3. Vercel Deployer (`/vercel-deployer`) 🔌 MCP
 **Vercel Platform Specialist**
 
 **Skills Available (4):**
+- `/sp.vercel-deployer` 🔌 - Vercel deployment (MCP-enhanced)
 - `/sp.deployment-automation` - Automated deployments
 - `/sp.production-checklist` - Production validation
 - `/sp.frontend-developer` - Next.js optimization
 - `/sp.performance-logger` - Performance monitoring
 
+**MCP Integration:** ✅ Vercel MCP Server
+- Programmatic deployments and status checks
+- Environment variable management via API
+- Build log access and debugging
+- Custom domain configuration
+- See `.claude/.mcp.json` for configuration
+
 **Use for:**
-- Vercel deployment configuration
+- Vercel deployment configuration (automated via MCP)
 - Next.js optimization (ISR, SSR, SSG)
 - Edge Functions
 - Performance optimization
-- Core Web Vitals
+- Core Web Vitals monitoring
 - CDN caching
+- Troubleshooting deployment issues
 
 ---
 

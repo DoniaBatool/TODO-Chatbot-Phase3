@@ -25,10 +25,10 @@ todo-chatbot-phase3/
 ├── frontend/             # Next.js frontend
 │   └── CLAUDE.md         # Frontend-specific guide ⭐
 ├── .claude/
-│   ├── agents/           # 10 FTE agents
-│   ├── skills/           # 31 reusable skills
+│   ├── agents/           # 17 FTE agents (3 MCP-enhanced)
+│   ├── skills/           # 43 reusable skills (3 MCP-enhanced)
 │   └── docs/             # 📚 Detailed documentation
-│       ├── skills-reference.md       # Complete 31 skills guide
+│       ├── skills-reference.md       # Complete 43 skills guide
 │       ├── skills-scenarios.md       # Usage scenarios & mappings
 │       └── architect-guidelines.md   # Architecture planning guide
 ├── .specify/             # SpecKit Plus framework
@@ -137,19 +137,22 @@ User: "Create a PR for my changes"
 
 ---
 
-## 🏭 Digital Agent Factory (16 FTE Agents) - EXPANDED!
+## 🏭 Digital Agent Factory (17 FTE Agents) - EXPANDED!
 
 **Orchestration:** orchestrator (Auto-analyzes prompts & delegates tasks)
 **Backend:** backend-developer, database-engineer, security-engineer, qa-engineer, devops-engineer
-**Frontend:** frontend-developer, uiux-designer, vercel-deployer
-**Cross-Cutting:** fullstack-architect, github-specialist
+**Frontend:** frontend-developer, uiux-designer, vercel-deployer 🔌
+**Cross-Cutting:** fullstack-architect, github-specialist 🔌
+**Deployment:** vercel-deployer 🔌, render-deployer 🔌 (NEW!)
 **NEW Specialists:** data-engineer, technical-writer, cloud-architect, api-architect, product-manager
 
-**Total:** 42 reusable intelligence skills | **Docs:** `.claude/agents/README.md`
+**🔌 MCP-Enhanced Agents (3):** github-specialist, vercel-deployer, render-deployer
+
+**Total:** 43 reusable intelligence skills | **Docs:** `.claude/agents/README.md`
 
 ---
 
-## 🧠 Reusable Intelligence Skills (42 Total) - EXPANDED!
+## 🧠 Reusable Intelligence Skills (43 Total) - EXPANDED!
 
 **📚 Complete Reference:** See `.claude/docs/skills-reference.md`
 
@@ -161,8 +164,10 @@ User: "Create a PR for my changes"
 3. **Foundation Patterns (6):** jwt-authentication, password-security, user-isolation, pydantic-validation, connection-pooling, transaction-management
 4. **Role-Based (7):** backend-developer, frontend-developer, fullstack-architect, database-engineer, devops-engineer, security-engineer, uiux-designer
 5. **Quality & Testing (3):** edge-case-tester, ab-testing, qa-engineer
-6. **Production (5):** deployment-automation, production-checklist, structured-logging, performance-logger, vercel-deployer
+6. **Production (6) 🔌:** deployment-automation, production-checklist, structured-logging, performance-logger, vercel-deployer, render-deployer
 7. **🆕 Modern Architecture (10 NEW!):** caching-strategy, api-contract-design, message-queue-integration, observability-apm, microservices-patterns, infrastructure-as-code, feature-flags-management, websocket-realtime, graphql-api, container-orchestration
+
+**🔌 MCP-Enhanced Skills (3):** vercel-deployer, render-deployer, github-specialist
 
 **📚 Detailed Guides:**
 - **Complete skills reference:** `.claude/docs/skills-reference.md`

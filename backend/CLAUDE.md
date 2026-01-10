@@ -125,11 +125,12 @@ These FTE agents are specialized for backend development tasks:
 ### 5. DevOps Engineer (`/devops-engineer`)
 **Infrastructure & Deployment**
 
-**Skills Available (4):**
+**Skills Available (5):**
 - `/sp.deployment-automation` - Automated deployments
 - `/sp.production-checklist` - Production readiness
 - `/sp.structured-logging` - JSON logging infrastructure
 - `/sp.performance-logger` - Execution time monitoring
+- `/sp.render-deployer` 🔌 - Render.com deployment (MCP-enhanced, NEW!)
 
 **Use for:**
 - Docker containerization
@@ -137,6 +138,7 @@ These FTE agents are specialized for backend development tasks:
 - Monitoring and logging
 - Health checks
 - Production deployment
+- Backend deployment to Render.com with MCP automation
 
 ---
 

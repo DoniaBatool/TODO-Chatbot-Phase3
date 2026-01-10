@@ -45,8 +45,8 @@
 ✅ **MCP-First Architecture** - Model Context Protocol for AI-app integration
 ✅ **Stateless Design** - Horizontally scalable, cloud-ready architecture
 ✅ **Database-Centric State** - All state persisted in PostgreSQL
-✅ **Agent-First Development** - Built using 10 specialized FTE AI agents
-✅ **31 Reusable Skills** - Intelligent automation with reusable intelligence
+✅ **Agent-First Development** - Built using 17 specialized FTE AI agents (3 MCP-enhanced 🔌)
+✅ **43 Reusable Skills** - Intelligent automation with reusable intelligence
 ✅ **Spec-Driven** - Every feature starts with a specification
 ✅ **Constitution-Enforced** - Architectural principles religiously followed
 
@@ -184,7 +184,9 @@
 
 ## 🏭 Digital Agent Factory
 
-This project is built using **10 Full-Time Equivalent (FTE) AI Agents** from our Digital Agent Factory. Each agent specializes in a specific domain and has access to relevant skills.
+This project is built using **17 Full-Time Equivalent (FTE) AI Agents** from our Digital Agent Factory. Each agent specializes in a specific domain and has access to relevant skills.
+
+**🔌 MCP-Enhanced Agents (3):** github-specialist, vercel-deployer, render-deployer
 
 ### Backend Specialists (5 Agents)
 
@@ -202,14 +204,30 @@ This project is built using **10 Full-Time Equivalent (FTE) AI Agents** from our
 |-------|--------|-----------------|
 | **frontend-developer** | 3 skills | React, Next.js, TypeScript, Tailwind CSS, UI components |
 | **uiux-designer** | 2 skills | UI/UX design, design systems, accessibility, user flows |
-| **vercel-deployer** | 4 skills | Vercel deployment, Next.js optimization, Edge Functions |
+| **vercel-deployer** 🔌 | 4 skills | Vercel deployment, Next.js optimization, Edge Functions (MCP-enhanced) |
+
+### Deployment Specialists (1 Agent) - NEW!
+
+| Agent | Skills | Responsibilities |
+|-------|--------|-----------------|
+| **render-deployer** 🔌 | 4 skills | Render.com backend deployment, PostgreSQL, cron jobs (MCP-enhanced) |
 
 ### Cross-Cutting Specialists (2 Agents)
 
 | Agent | Skills | Responsibilities |
 |-------|--------|-----------------|
 | **fullstack-architect** | 8 skills | System design, architecture decisions, feature planning |
-| **github-specialist** | 3 skills | Git workflows, CI/CD, code review, branch management |
+| **github-specialist** 🔌 | 3 skills | Git workflows, CI/CD, code review, branch management (MCP-enhanced) |
+
+### NEW Specialists (5 Agents)
+
+| Agent | Skills | Responsibilities |
+|-------|--------|-----------------|
+| **data-engineer** | 7 skills | Data pipelines, ETL/ELT, analytics infrastructure, BI integration |
+| **technical-writer** | 4 skills | Technical documentation, user guides, API docs, tutorials |
+| **cloud-architect** | 7 skills | Cloud infrastructure (AWS/GCP/Azure), Kubernetes, cloud migration |
+| **api-architect** | 6 skills | API design, REST/GraphQL/gRPC, microservices communication |
+| **product-manager** | 4 skills | Requirements gathering, user stories, roadmap planning, prioritization |
 
 **Documentation:** See `.claude/agents/README.md` for complete agent reference.
 
@@ -217,7 +235,9 @@ This project is built using **10 Full-Time Equivalent (FTE) AI Agents** from our
 
 ## 🧠 Reusable Intelligence Skills
 
-This project leverages **31 Reusable Intelligence Skills** organized in 6 categories:
+This project leverages **43 Reusable Intelligence Skills** organized in 7 categories:
+
+**🔌 MCP-Enhanced Skills (3):** vercel-deployer, render-deployer, github-specialist
 
 ### 1️⃣ Workflow & Planning (5 skills)
 - `new-feature` - Complete feature scaffolding (spec→plan→tasks)
@@ -249,12 +269,13 @@ This project leverages **31 Reusable Intelligence Skills** organized in 6 catego
 - `ab-testing` - A/B testing framework
 - `qa-engineer` - Comprehensive testing
 
-### 6️⃣ Production & Deployment (5 skills)
+### 6️⃣ Production & Deployment (6 skills) 🔌
 - `deployment-automation` - Automated deployment workflows
 - `production-checklist` - Production readiness validation
 - `structured-logging` - JSON logging infrastructure
 - `performance-logger` - Execution time monitoring
-- `vercel-deployer` - Vercel platform deployment
+- `vercel-deployer` 🔌 - Vercel platform deployment (MCP-enhanced)
+- `render-deployer` 🔌 - Render.com backend deployment (MCP-enhanced, NEW!)
 
 **Documentation:** See `.claude/skills/` directory for all skill implementations.
 
@@ -332,7 +353,7 @@ This project leverages **31 Reusable Intelligence Skills** organized in 6 catego
 ```
 todo-chatbot-phase3/
 ├── .claude/                      # Claude Code configuration
-│   ├── agents/                   # 🏭 Digital Agent Factory (10 FTE agents)
+│   ├── agents/                   # 🏭 Digital Agent Factory (17 FTE agents, 3 MCP-enhanced)
 │   │   ├── README.md
 │   │   ├── backend-developer.md
 │   │   ├── frontend-developer.md
@@ -345,7 +366,7 @@ todo-chatbot-phase3/
 │   │   ├── github-specialist.md
 │   │   └── vercel-deployer.md
 │   │
-│   └── skills/                   # 🧠 Reusable Intelligence (31 skills)
+│   └── skills/                   # 🧠 Reusable Intelligence (43 skills, 3 MCP-enhanced)
 │       ├── AB-Testing/
 │       ├── AI-Agent-Setup/
 │       ├── mcp-tool-builder/
@@ -579,7 +600,7 @@ See `.specify/memory/constitution.md` for complete guidelines.
 2. **Backend CLAUDE.md** (`backend/CLAUDE.md`) - Backend-specific guide
 3. **Frontend CLAUDE.md** (`frontend/CLAUDE.md`) - Frontend-specific guide
 4. **Constitution** (`.specify/memory/constitution.md`) - Project principles
-5. **Agent Factory** (`.claude/agents/README.md`) - All 10 FTE agents
+5. **Agent Factory** (`.claude/agents/README.md`) - All 17 FTE agents
 6. **Skills Reference** (`.claude/skills/`) - All 31 reusable skills
 
 ### Quick Reference
@@ -931,7 +952,7 @@ See deployment guides:
 - [Backend CLAUDE.md](./backend/CLAUDE.md) - Backend development
 - [Frontend CLAUDE.md](./frontend/CLAUDE.md) - Frontend development
 - [Constitution](./specify/memory/constitution.md) - Project principles
-- [Agent Factory](./claude/agents/README.md) - All 10 FTE agents
+- [Agent Factory](./claude/agents/README.md) - All 17 FTE agents
 
 ### External Resources
 

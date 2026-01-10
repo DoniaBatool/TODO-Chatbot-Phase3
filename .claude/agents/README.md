@@ -2,7 +2,9 @@
 
 ## Full-Time Equivalent (FTE) AI Agents with Reusable Intelligence
 
-This directory contains **16 specialized FTE agents** (EXPANDED!), each with expertise in their domain and access to relevant skills from the `.claude/skills/` directory.
+This directory contains **17 specialized FTE agents** (EXPANDED!), each with expertise in their domain and access to relevant skills from the `.claude/skills/` directory.
+
+**🔌 MCP-Enhanced Agents (3):** github-specialist, vercel-deployer, render-deployer
 
 ## 🤖 Available Agents
 
@@ -136,32 +138,68 @@ This directory contains **16 specialized FTE agents** (EXPANDED!), each with exp
 
 ---
 
-### 9. GitHub Specialist (`/github-specialist`)
+### 9. GitHub Specialist (`/github-specialist`) 🔌 MCP
 **Role**: Git workflows, CI/CD, code review
 **Skills**: 3 skills
+- github-specialist (MCP-enhanced)
 - change-management
 - production-checklist
 - deployment-automation
 
-**Use when**: Managing Git workflows, setting up CI/CD, code reviews
+**MCP Integration**: ✅ GitHub MCP Server
+- Programmatic PR creation, issue management, releases
+- Automated GitHub Actions triggers
+- Repository management and branch protection
+- See `.claude/.mcp.json` for configuration
+
+**Use when**: Managing Git workflows, setting up CI/CD, code reviews, automating GitHub operations
 
 ---
 
-### 10. Vercel Deployer (`/vercel-deployer`)
+### 10. Vercel Deployer (`/vercel-deployer`) 🔌 MCP
 **Role**: Vercel platform deployment and optimization
 **Skills**: 4 skills
+- vercel-deployer (MCP-enhanced)
 - deployment-automation
 - production-checklist
 - frontend-developer
 - performance-logger
 
-**Use when**: Deploying to Vercel, optimizing Next.js apps, performance tuning
+**MCP Integration**: ✅ Vercel MCP Server
+- Programmatic deployments and status checks
+- Environment variable management
+- Build log access and debugging
+- Custom domain configuration
+- See `.claude/.mcp.json` for configuration
+
+**Use when**: Deploying to Vercel, optimizing Next.js apps, performance tuning, automated deployments
+
+---
+
+### 11. Render Deployer (`/render-deployer`) 🔌 MCP - NEW!
+**Role**: Backend deployment on Render.com platform
+**Skills**: 4 skills
+- render-deployer (MCP-enhanced)
+- deployment-automation
+- production-checklist
+- backend-developer
+- database-engineer
+
+**MCP Integration**: ✅ Render MCP Server
+- FastAPI/Node.js backend deployment
+- PostgreSQL database management
+- Environment variables and secrets
+- Service logs and health monitoring
+- Cron jobs and background workers
+- See `.claude/.mcp.json` for configuration
+
+**Use when**: Deploying backends to Render, managing databases, configuring cron jobs, monitoring services
 
 ---
 
 ### 🆕 NEW SPECIALIST AGENTS (5)
 
-### 11. Data Engineer (`/data-engineer`)
+### 12. Data Engineer (`/data-engineer`)
 **Role**: Data pipelines, ETL/ELT, analytics infrastructure
 **Skills**: 7 skills
 - database-engineer
@@ -176,7 +214,7 @@ This directory contains **16 specialized FTE agents** (EXPANDED!), each with exp
 
 ---
 
-### 12. Technical Writer (`/technical-writer`)
+### 13. Technical Writer (`/technical-writer`)
 **Role**: Technical documentation, user guides, API docs
 **Skills**: 4 skills
 - api-docs-generator
@@ -188,7 +226,7 @@ This directory contains **16 specialized FTE agents** (EXPANDED!), each with exp
 
 ---
 
-### 13. Cloud Architect (`/cloud-architect`)
+### 14. Cloud Architect (`/cloud-architect`)
 **Role**: Cloud infrastructure (AWS/GCP/Azure), Kubernetes
 **Skills**: 7 skills
 - devops-engineer
@@ -203,7 +241,7 @@ This directory contains **16 specialized FTE agents** (EXPANDED!), each with exp
 
 ---
 
-### 14. API Architect (`/api-architect`)
+### 15. API Architect (`/api-architect`)
 **Role**: API design, REST/GraphQL/gRPC, microservices
 **Skills**: 6 skills
 - api-contract-design
@@ -217,7 +255,7 @@ This directory contains **16 specialized FTE agents** (EXPANDED!), each with exp
 
 ---
 
-### 15. Product Manager (`/product-manager`)
+### 16. Product Manager (`/product-manager`)
 **Role**: Requirements, user stories, roadmap planning
 **Skills**: 4 skills
 - new-feature
