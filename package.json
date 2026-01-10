@@ -1,0 +1,12 @@
+{
+  "name": "todo-chatbot-phase3-monorepo",
+  "private": true,
+  "scripts": {
+    "build": "npm run build --workspace=frontend",
+    "dev": "npm run dev --workspace=frontend",
+    "start": "npm run start --workspace=frontend"
+  },
+  "workspaces": [
+    "frontend"
+  ]
+}
