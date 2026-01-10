@@ -46,6 +46,97 @@ todo-chatbot-phase3/
 
 ---
 
+## 🔌 MCP Server Integration (Model Context Protocol)
+
+**Enhanced with programmatic API control for deployment and version control platforms.**
+
+### Configured MCP Servers
+
+The project integrates **4 MCP servers** for automated platform operations:
+
+| Server | Platform | Purpose | Configuration |
+|--------|----------|---------|---------------|
+| **context7** | Documentation | Search library docs & code examples | `.claude/.mcp.json` |
+| **vercel** | Deployment | Deploy & manage Next.js on Vercel | `.claude/.mcp.json` |
+| **render** | Deployment | Deploy & manage FastAPI backends | `.claude/.mcp.json` |
+| **github** | Version Control | Automate GitHub operations (PRs, issues, releases) | `.claude/.mcp.json` |
+
+### MCP Configuration File
+
+**Location:** `.claude/.mcp.json` (⚠️ Contains API keys - **gitignored**)
+
+```json
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp", "--api-key", "YOUR_KEY"]
+    },
+    "vercel": {
+      "url": "https://mcp.vercel.com",
+      "headers": { "Authorization": "Bearer YOUR_TOKEN" }
+    },
+    "render": {
+      "url": "https://mcp.render.com/mcp",
+      "headers": { "Authorization": "Bearer YOUR_TOKEN" }
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_PAT" }
+    }
+  }
+}
+```
+
+### MCP-Enhanced Skills
+
+**Skills with MCP integration:**
+- ✅ `/vercel-deployer` - Programmatic Vercel deployments
+- ✅ `/render-deployer` - Automated Render backend deployments
+- ✅ `/github-specialist` - GitHub automation (PRs, issues, releases)
+
+### Usage Pattern
+
+```
+User Request
+    ↓
+Check MCP Availability
+    ↓
+Use MCP Tools (programmatic) ✅
+    ↓ (if MCP unavailable)
+Fallback to Manual Instructions
+```
+
+**Example:**
+```
+User: "Deploy to Vercel"
+→ Uses Vercel MCP to trigger deployment
+→ Returns deployment URL and status
+
+User: "Create a PR for my changes"
+→ Uses GitHub MCP to create pull request
+→ Returns PR link
+```
+
+### Security Notes
+
+⚠️ **CRITICAL:**
+- `.claude/.mcp.json` contains sensitive API keys and tokens
+- ✅ Added to `.gitignore` - **NEVER commit to repository**
+- ✅ Rotate tokens regularly (every 90 days)
+- ✅ Use fine-grained permissions (minimum required scopes)
+- ✅ Store production tokens separately from development tokens
+
+### MCP Resources
+
+- **MCP Specification:** https://modelcontextprotocol.io/
+- **Available MCP Servers:** https://github.com/modelcontextprotocol/servers
+- **Configuration:** `.claude/.mcp.json`
+- **Skills Documentation:** See individual skill files
+
+---
+
 ## 🏭 Digital Agent Factory (16 FTE Agents) - EXPANDED!
 
 **Orchestration:** orchestrator (Auto-analyzes prompts & delegates tasks)

@@ -8,6 +8,11 @@
 .env.*
 !.env.example
 
+# MCP Server Configuration (contains API keys and tokens)
+.claude/.mcp.json
+.mcp.json
+*.mcp.json
+
 # Python
 __pycache__/
 *.py[cod]
