@@ -65,10 +65,13 @@ def parse_natural_date(date_str: str) -> Optional[datetime]:
 
     # Try parsedatetime for natural language
     try:
-        time_struct, parse_status = cal.parse(date_str)
+        # CRITICAL: Pass current time as sourceTime for accurate relative date parsing
+        # Without this, "tomorrow" might be calculated from stale reference date
+        current_time = datetime.now()
+        time_struct, parse_status = cal.parse(date_str, sourceTime=current_time)
         if parse_status in [1, 2, 3]:  # Successfully parsed
             parsed = datetime(*time_struct[:6])
-            logger.info(f"Parsed natural date '{date_str}' as {parsed}")
+            logger.info(f"Parsed natural date '{date_str}' as {parsed} (relative to {current_time})")
             return parsed
     except Exception as e:
         logger.warning(f"Failed to parse date '{date_str}': {e}")
