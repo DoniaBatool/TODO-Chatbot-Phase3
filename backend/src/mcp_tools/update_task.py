@@ -140,9 +140,9 @@ def update_task(db: Session, params: UpdateTaskParams) -> UpdateTaskResult:
         >>> assert result.priority == "high"
     """
     # Validate at least one field provided (T128)
-    if (params.title is None and params.description is None and
-        params.priority is None and params.due_date is None and
-        params.completed is None):
+    # Check if any field was explicitly set (using __fields_set__)
+    updateable_fields = {'title', 'description', 'priority', 'due_date', 'completed'}
+    if not any(field in params.__fields_set__ for field in updateable_fields):
         raise ValueError("At least one field (title, description, priority, due_date, or completed) must be provided")
 
     logger.info(
@@ -189,15 +189,21 @@ def update_task(db: Session, params: UpdateTaskParams) -> UpdateTaskResult:
     )
 
     # Update provided fields (T130)
-    if params.title is not None:
+    # Use __fields_set__ to detect which fields were explicitly provided
+    # This allows us to distinguish between "not provided" vs "provided as None"
+    fields_set = params.__fields_set__
+
+    if 'title' in fields_set:
         task.title = params.title
-    if params.description is not None:
+    if 'description' in fields_set:
         task.description = params.description
-    if params.priority is not None:
+    if 'priority' in fields_set:
         task.priority = params.priority
-    if params.due_date is not None:
+    if 'due_date' in fields_set:
+        # If explicitly set (even to None), update it
+        # This allows removing due dates by setting them to None
         task.due_date = params.due_date
-    if params.completed is not None:
+    if 'completed' in fields_set:
         task.completed = params.completed
 
     # Always update timestamp (T022)

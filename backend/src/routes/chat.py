@@ -398,23 +398,37 @@ async def chat(
                         logger.error(f"Failed to find task: {e}")
 
                 if task_id:
-                    # Parse due_date if provided
-                    due_date = None
+                    # Build update params - only include fields that were actually provided
+                    update_params = {'task_id': task_id}
+
+                    # Add title if provided
+                    if 'title' in detected_intent.params and detected_intent.params['title'] is not None:
+                        update_params['title'] = detected_intent.params['title']
+
+                    # Add description if provided
+                    if 'description' in detected_intent.params and detected_intent.params['description'] is not None:
+                        update_params['description'] = detected_intent.params['description']
+
+                    # Add priority if provided
+                    if 'priority' in detected_intent.params and detected_intent.params['priority'] is not None:
+                        update_params['priority'] = detected_intent.params['priority']
+
+                    # Handle due_date - parse if provided
                     if 'due_date' in detected_intent.params:
-                        due_date_str = detected_intent.params.get('due_date')
-                        if due_date_str:
+                        due_date_str = detected_intent.params['due_date']
+                        if due_date_str is None:
+                            # Explicitly remove deadline
+                            update_params['due_date'] = None
+                        else:
+                            # Parse natural language date
                             due_date = parse_natural_date(due_date_str)
+                            if due_date:
+                                update_params['due_date'] = due_date.isoformat()
 
                     # FORCE update_task execution
                     forced_tool_calls.append({
                         'tool': 'update_task',
-                        'params': {
-                            'task_id': task_id,
-                            'title': detected_intent.params.get('title'),
-                            'description': detected_intent.params.get('description'),
-                            'priority': detected_intent.params.get('priority'),
-                            'due_date': due_date.isoformat() if due_date else None,
-                        }
+                        'params': update_params
                     })
 
                     logger.info(
@@ -477,6 +491,38 @@ async def chat(
 
                     logger.info(
                         f"FORCED COMPLETE: task_id={task_id}",
+                        extra={"user_id": user_id, "task_id": task_id}
+                    )
+
+            # Handle INCOMPLETE intent (mark as not done/pending)
+            elif detected_intent.operation == "incomplete" and not detected_intent.needs_confirmation:
+                task_id = detected_intent.task_id
+
+                # If task_title provided, find it first
+                if not task_id and detected_intent.task_title:
+                    try:
+                        find_params = FindTaskParams(
+                            user_id=user_id,
+                            title=detected_intent.task_title
+                        )
+                        find_result = find_task(db, find_params)
+                        if find_result:
+                            task_id = find_result.task_id
+                    except Exception as e:
+                        logger.error(f"Failed to find task: {e}")
+
+                if task_id:
+                    # FORCE update_task execution with completed=False
+                    forced_tool_calls.append({
+                        'tool': 'update_task',
+                        'params': {
+                            'task_id': task_id,
+                            'completed': False
+                        }
+                    })
+
+                    logger.info(
+                        f"FORCED INCOMPLETE: task_id={task_id}",
                         extra={"user_id": user_id, "task_id": task_id}
                     )
 

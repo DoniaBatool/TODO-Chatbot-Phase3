@@ -57,8 +57,30 @@ def parse_natural_date(date_str: str) -> Optional[datetime]:
 
     # Try dateutil parser (handles many formats)
     try:
-        parsed = dateutil_parser.parse(date_str, fuzzy=True)
-        logger.info(f"Parsed date '{date_str}' as {parsed}")
+        # CRITICAL FIX: Set default year to current year to avoid parsing "Nov 29" as 2023
+        current_time = datetime.now()
+        parsed = dateutil_parser.parse(
+            date_str,
+            fuzzy=True,
+            default=current_time  # Use current date as default for missing components
+        )
+
+        # VALIDATION: If parsed date is more than 1 year in the past, assume user meant future year
+        if parsed < current_time - timedelta(days=365):
+            # Date is way in the past - likely a parsing error
+            # Try adding current year + 1
+            logger.warning(f"Parsed date '{date_str}' as {parsed}, which is >1 year in past. Trying with current/next year...")
+            # Re-parse with explicit year correction
+            try:
+                # If month has passed this year, use next year
+                if parsed.month < current_time.month or (parsed.month == current_time.month and parsed.day < current_time.day):
+                    parsed = parsed.replace(year=current_time.year + 1)
+                else:
+                    parsed = parsed.replace(year=current_time.year)
+            except:
+                pass  # Keep original parsed date if replacement fails
+
+        logger.info(f"Parsed date '{date_str}' as {parsed} using dateutil")
         return parsed
     except (ValueError, TypeError, ParserError):
         pass

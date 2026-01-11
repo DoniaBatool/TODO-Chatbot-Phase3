@@ -73,6 +73,14 @@ class IntentDetector:
         re.compile(r'finish(?:ed)?\s+task', re.IGNORECASE),
     ]
 
+    # Patterns for INCOMPLETE intent (mark as not done/pending)
+    INCOMPLETE_PATTERNS = [
+        re.compile(r'mark\s+(?:task\s+)?.*?\s+as\s+(?:incomplete|not\s+done|pending|undone)', re.IGNORECASE),
+        re.compile(r'unmark\s+task', re.IGNORECASE),
+        re.compile(r'uncomplete\s+task', re.IGNORECASE),
+        re.compile(r'set\s+(?:task\s+)?.*?\s+to\s+(?:incomplete|pending)', re.IGNORECASE),
+    ]
+
     # Priority keywords
     PRIORITY_MAP = {
         'high': ['high', 'urgent', 'important', 'critical', 'asap', 'zaruri'],
@@ -140,6 +148,10 @@ class IntentDetector:
         # STEP 4: Check for COMPLETE intent
         if self._matches_any_pattern(message, self.COMPLETE_PATTERNS):
             return self._detect_complete_intent(message, message_lower, conversation_history)
+
+        # STEP 5: Check for INCOMPLETE intent
+        if self._matches_any_pattern(message, self.INCOMPLETE_PATTERNS):
+            return self._detect_incomplete_intent(message, message_lower, conversation_history)
 
         return None
 
@@ -212,6 +224,8 @@ class IntentDetector:
                         operation = 'delete'
                     elif 'update' in content or 'change' in content or 'edit' in content:
                         operation = 'update'
+                    elif 'incomplete' in content or 'not done' in content or 'pending' in content or 'undone' in content:
+                        operation = 'incomplete'
                     elif 'complete' in content or 'mark' in content or 'done' in content:
                         operation = 'complete'
 
@@ -457,6 +471,38 @@ class IntentDetector:
             task_id=task_id,
             task_title=task_title,
             needs_confirmation=True  # Always ask before marking complete
+        )
+
+
+    def _detect_incomplete_intent(
+        self,
+        message: str,
+        message_lower: str,
+        conversation_history: List[Dict[str, str]]
+    ) -> Optional[Intent]:
+        """Detect INCOMPLETE intent (mark task as not done/pending)."""
+
+        task_id = self._extract_task_id(message)
+        task_title = self._extract_task_title(message, message_lower) if not task_id else None
+
+        # Check conversation context
+        if not task_id and not task_title:
+            task_id = self._get_context_task_id(conversation_history)
+
+        if not task_id and not task_title:
+            return None
+
+        logger.info(
+            f"Detected INCOMPLETE intent: task_id={task_id}, task_title={task_title}"
+        )
+
+        # Use update operation with completed=False
+        return Intent(
+            operation="incomplete",  # Will be handled as update with completed=False
+            task_id=task_id,
+            task_title=task_title,
+            params={"completed": False},
+            needs_confirmation=True  # Always ask before marking incomplete
         )
 
 
