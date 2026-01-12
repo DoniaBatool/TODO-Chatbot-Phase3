@@ -815,6 +815,73 @@ async def chat(
                         )
                         # Continue even if tool fails
 
+                elif tool_name == 'set_task_deadline':
+                    # Execute set_task_deadline tool
+                    try:
+                        from ..mcp_tools.set_task_deadline import (
+                            set_task_deadline,
+                            SetTaskDeadlineParams
+                        )
+
+                        logger.info(
+                            f"Executing set_task_deadline for user {user_id}",
+                            extra={
+                                "user_id": user_id,
+                                "task_id": tool_params.get('task_id'),
+                                "due_date": tool_params.get('due_date')
+                            }
+                        )
+
+                        # Parse due_date if it's a string (natural language)
+                        due_date_value = tool_params.get('due_date')
+                        if due_date_value and isinstance(due_date_value, str):
+                            # Parse natural language date
+                            parsed_date = parse_natural_date(due_date_value)
+                            if parsed_date:
+                                due_date_value = parsed_date.isoformat()
+                            else:
+                                logger.warning(f"Failed to parse date: {due_date_value}")
+
+                        params = SetTaskDeadlineParams(
+                            user_id=user_id,
+                            task_id=tool_params.get('task_id'),
+                            due_date=due_date_value
+                        )
+                        result = set_task_deadline(db, params)
+
+                        logger.info(
+                            f"set_task_deadline succeeded: task_id={result.task_id}, action={result.action}",
+                            extra={
+                                "user_id": user_id,
+                                "task_id": result.task_id,
+                                "action": result.action,
+                                "new_due_date": result.due_date.isoformat() if result.due_date else None
+                            }
+                        )
+
+                        executed_tools.append({
+                            'tool': 'set_task_deadline',
+                            'params': tool_params,
+                            'result': {
+                                'task_id': result.task_id,
+                                'title': result.title,
+                                'due_date': result.due_date.isoformat() if result.due_date else None,
+                                'action': result.action,
+                                'updated_at': result.updated_at.isoformat()
+                            }
+                        })
+                    except Exception as e:
+                        logger.error(
+                            f"set_task_deadline failed for task_id={tool_params.get('task_id')}: {str(e)}",
+                            extra={
+                                "user_id": user_id,
+                                "task_id": tool_params.get('task_id'),
+                                "error_type": type(e).__name__
+                            },
+                            exc_info=True
+                        )
+                        # Continue even if tool fails
+
                 elif tool_name == 'find_task':
                     # Execute find_task tool
                     try:

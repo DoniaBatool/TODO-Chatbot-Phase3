@@ -284,6 +284,44 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
                     "required": ["user_id", "title"]
                 }
             }
+        },
+        # set_task_deadline tool for deadline management
+        {
+            "type": "function",
+            "function": {
+                "name": "set_task_deadline",
+                "description": (
+                    "Set, update, or remove a task's deadline/due date. "
+                    "Use this when the user wants to: "
+                    "- Set a new deadline (e.g., 'Set deadline for task 5 to tomorrow') "
+                    "- Change existing deadline (e.g., 'Change task 3 deadline to next Friday') "
+                    "- Remove deadline completely (e.g., 'Remove deadline from task 7'). "
+                    "This is a FOCUSED tool specifically for deadline management."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {
+                            "type": "string",
+                            "description": "ID of the authenticated user (automatically provided)"
+                        },
+                        "task_id": {
+                            "type": "integer",
+                            "description": "ID of the task to update"
+                        },
+                        "due_date": {
+                            "type": "string",
+                            "description": (
+                                "New deadline in ISO 8601 format (e.g., '2026-01-15T14:30:00'). "
+                                "Extract from natural language: 'tomorrow', 'next Friday', 'January 20 at 2pm'. "
+                                "Set to null to REMOVE the deadline completely. "
+                                "Examples: 'tomorrow' → parse to ISO format, 'remove deadline' → null"
+                            )
+                        }
+                    },
+                    "required": ["user_id", "task_id"]
+                }
+            }
         }
     ]
 
@@ -302,10 +340,12 @@ def register_tools() -> List[Dict[str, Any]]:
     - Phase 5: complete_task ✓
     - Phase 6: update_task ✓
     - Phase 7: delete_task ✓
+    - Phase 8: find_task ✓
+    - Phase 9: set_task_deadline ✓ (NEW - Dedicated deadline management)
 
     Example:
         >>> tools = register_tools()
         >>> assert isinstance(tools, list)
-        >>> assert len(tools) == 5  # All 5 task management tools
+        >>> assert len(tools) == 7  # All 7 task management tools
     """
     return get_tool_definitions()

@@ -52,8 +52,8 @@ def enhance_tool_parameters(
     """
     enhanced_params = params.copy()
 
-    # Natural Language Date Parsing for add_task and update_task
-    if tool_name in ['add_task', 'update_task']:
+    # Natural Language Date Parsing for add_task, update_task, and set_task_deadline
+    if tool_name in ['add_task', 'update_task', 'set_task_deadline']:
         # Parse due_date if present as string
         if 'due_date' in params and isinstance(params['due_date'], str):
             date_str = params['due_date']
@@ -270,6 +270,13 @@ async def run_agent(
                 elif tool_name == 'delete_task':
                     task_id = tool_params.get('task_id', '')
                     response_text = f"I've removed task {task_id} from your tasks."
+                elif tool_name == 'set_task_deadline':
+                    task_id = tool_params.get('task_id', '')
+                    due_date = tool_params.get('due_date')
+                    if due_date:
+                        response_text = f"I've updated the deadline for task {task_id}."
+                    else:
+                        response_text = f"I've removed the deadline from task {task_id}."
                 else:
                     response_text = "Done! Let me know if you need anything else."
 
