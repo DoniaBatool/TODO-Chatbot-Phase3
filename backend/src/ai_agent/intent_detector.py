@@ -416,6 +416,21 @@ class IntentDetector:
         task_id = self._extract_task_id(message)
         task_title = self._extract_task_title(message, message_lower) if not task_id else None
 
+        # Special pattern: "update [title] task to [new_title]"
+        # Example: "update zoom class task to PIAIC CLASS"
+        if not task_id and not task_title:
+            update_to_pattern = re.search(
+                r'update\s+(.+?)\s+task\s+to\s+(.+?)(?:$|,|\s+with|\s+and)',
+                message_lower,
+                re.IGNORECASE
+            )
+            if update_to_pattern:
+                task_title = update_to_pattern.group(1).strip()
+                # Clean up task title
+                task_title = re.sub(r'^(the|a|an)\s+', '', task_title, flags=re.IGNORECASE)
+                if task_title and len(task_title) >= 2:
+                    logger.info(f"Extracted task title from 'update X task to Y' pattern: '{task_title}'")
+
         # If neither found, check conversation context for recently mentioned task
         if not task_id and not task_title:
             task_id = self._get_context_task_id(conversation_history)
@@ -426,27 +441,59 @@ class IntentDetector:
         # If still not found but user is providing update details (like "update the title: X"),
         # this might be a follow-up to a previous update request - check conversation context
         if not task_id and not task_title:
-            # Check recent conversation for task mentions in both user and assistant messages
-            for msg in reversed(conversation_history[-10:]):
-                content = msg.get('content', '').lower()
-                role = msg.get('role', '')
-                
-                # Pattern 1: "update the task: [title]" or "i want to update the task: [title]"
-                task_match = re.search(r'(?:update|want\s+to\s+update|updateing)\s+(?:the\s+)?task:?\s+(.+?)(?:\s+update|\s+title|\s+priority|\s+deadline|$)', content, re.IGNORECASE | re.DOTALL)
-                if task_match:
-                    potential_title = task_match.group(1).strip()
-                    # Remove "the" prefix
-                    potential_title = re.sub(r'^(the|a|an)\s+', '', potential_title, flags=re.IGNORECASE)
-                    if potential_title and len(potential_title) > 2 and potential_title.lower() != 'the':
+            # Check if previous message was asking for task name and current message provides it
+            last_assistant_msg = None
+            for msg in reversed(conversation_history[-3:]):
+                if msg.get('role') == 'assistant':
+                    last_assistant_msg = msg.get('content', '').lower()
+                    break
+            
+            # If assistant asked "which task" or similar, current message is likely the title
+            if last_assistant_msg and any(keyword in last_assistant_msg for keyword in [
+                'which task', 'task name', 'task you want', 'task to update', 
+                'provide the name', 'mention the task', 'task number', 'kaunsa task',
+                'wala task', 'task update kerna'
+            ]):
+                # Current message might be providing task title
+                # Pattern: "zoom class wala task update kerna hai" → extract "zoom class"
+                title_match = re.search(r'(.+?)\s+(?:wala|walay|ka|ki|ko|task|update|kerna|hai)', message_lower)
+                if title_match:
+                    potential_title = title_match.group(1).strip()
+                    potential_title = re.sub(r'^(the|a|an|update)\s+', '', potential_title, flags=re.IGNORECASE)
+                    if potential_title and len(potential_title) >= 2 and not potential_title.isdigit():
                         task_title = potential_title
-                        logger.info(f"Found task title from context: '{task_title}'")
-                        break
-                
-                # Pattern 2: "task 'title'" or "task \"title\"" in assistant message
-                if role == 'assistant':
-                    task_match = re.search(r"task\s+['\"](.+?)['\"]|task\s+#?(\d+)", content)
+                        logger.info(f"Extracted task title from follow-up: '{task_title}'")
+                else:
+                    # Just the title itself
+                    potential_title = message.strip()
+                    potential_title = re.sub(r'^(the|a|an|update)\s+', '', potential_title, flags=re.IGNORECASE)
+                    potential_title = re.sub(r'\s+(wala|walay|task|update|kerna|hai).*$', '', potential_title, flags=re.IGNORECASE)
+                    if potential_title and len(potential_title) >= 2 and not potential_title.isdigit():
+                        task_title = potential_title
+                        logger.info(f"Extracted task title from simple follow-up: '{task_title}'")
+            
+            # Check recent conversation for task mentions in both user and assistant messages
+            if not task_title:
+                for msg in reversed(conversation_history[-10:]):
+                    content = msg.get('content', '').lower()
+                    role = msg.get('role', '')
+                    
+                    # Pattern 1: "update the task: [title]" or "i want to update the task: [title]"
+                    task_match = re.search(r'(?:update|want\s+to\s+update|updateing)\s+(?:the\s+)?task:?\s+(.+?)(?:\s+update|\s+title|\s+priority|\s+deadline|$)', content, re.IGNORECASE | re.DOTALL)
                     if task_match:
-                        if task_match.group(1):  # Title found
+                        potential_title = task_match.group(1).strip()
+                        # Remove "the" prefix
+                        potential_title = re.sub(r'^(the|a|an)\s+', '', potential_title, flags=re.IGNORECASE)
+                        if potential_title and len(potential_title) > 2 and potential_title.lower() != 'the':
+                            task_title = potential_title
+                            logger.info(f"Found task title from context: '{task_title}'")
+                            break
+                    
+                    # Pattern 2: "task 'title'" or "task \"title\"" in assistant message
+                    if role == 'assistant':
+                        task_match = re.search(r"task\s+['\"](.+?)['\"]|task\s+#?(\d+)", content)
+                        if task_match:
+                            if task_match.group(1):  # Title found
                             task_title = task_match.group(1).strip()
                             logger.info(f"Found task title from assistant context: '{task_title}'")
                             break
@@ -503,7 +550,10 @@ class IntentDetector:
 
         # Extract new title
         # Patterns: "change title to X", "update title to X", "set title to X", "update the title: X"
+        # Special: "update [task_title] task to [new_title]" - extract new title
         title_patterns = [
+            # Pattern: "update [task] task to [new_title]" - extract the new title (group 2)
+            r'update\s+(?:the\s+)?(.+?)\s+task\s+to\s+(.+?)(?:$|,|\s+with|\s+and|priority|deadline|description)',
             r'(?:change|update|set)\s+(?:the\s+)?title\s*(?:to|:)\s*(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
             r'(?:change|update)\s+(?:it\s+to|to)\s+(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
             r'title\s*(?:to|:)\s*(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
@@ -512,7 +562,11 @@ class IntentDetector:
         for pattern in title_patterns:
             title_match = re.search(pattern, message_lower)
             if title_match:
-                title = title_match.group(1).strip()
+                # For "update X task to Y" pattern, group 2 is the new title
+                if 'task\s+to' in pattern and len(title_match.groups()) >= 2:
+                    title = title_match.group(2).strip()
+                else:
+                    title = title_match.group(1).strip()
                 # Clean up title - remove trailing keywords
                 title = re.sub(r'\s+(priority|deadline|description|and|with|update|delete|complete|mark).*$', '', title, flags=re.IGNORECASE)
                 if title and len(title) > 1:
@@ -591,6 +645,30 @@ class IntentDetector:
         # Check conversation context if not found
         if not task_id and not task_title:
             task_id = self._get_context_task_id(conversation_history)
+
+        # If still not found, check if previous message was asking for task name
+        # and current message is just providing the title (follow-up)
+        if not task_id and not task_title and conversation_history:
+            last_assistant_msg = None
+            for msg in reversed(conversation_history[-3:]):
+                if msg.get('role') == 'assistant':
+                    last_assistant_msg = msg.get('content', '').lower()
+                    break
+            
+            # If assistant asked "which task" or "task name", current message is likely the title
+            if last_assistant_msg and any(keyword in last_assistant_msg for keyword in [
+                'which task', 'task name', 'task you want', 'task to delete', 
+                'provide the name', 'mention the task', 'task number'
+            ]):
+                # Current message is likely just the task title
+                # Extract any meaningful text (not just "the", "a", etc.)
+                potential_title = message.strip()
+                # Remove common words
+                potential_title = re.sub(r'^(the|a|an|delete|remove)\s+', '', potential_title, flags=re.IGNORECASE)
+                potential_title = re.sub(r'\s+(task|delete|remove).*$', '', potential_title, flags=re.IGNORECASE)
+                if potential_title and len(potential_title) >= 2 and not potential_title.isdigit():
+                    task_title = potential_title
+                    logger.info(f"Extracted task title from follow-up message: '{task_title}'")
 
         if not task_id and not task_title:
             return None
