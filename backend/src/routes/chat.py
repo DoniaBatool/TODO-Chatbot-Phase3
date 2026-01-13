@@ -393,8 +393,42 @@ async def chat(
                 if detected_intent.operation == "delete":
                     confirmation_msg = f"🗑️ Kya aap sure hain k task{task_details} delete karna hai? (Are you sure you want to delete this task?)\n\nReply 'yes' to confirm or 'no' to cancel."
                 elif detected_intent.operation == "complete":
+                    # Handle both ID and title for complete
+                    if not task_details:
+                        if detected_intent.task_id:
+                            task_details = f" #{detected_intent.task_id}"
+                        elif detected_intent.task_title:
+                            task_details = f" '{detected_intent.task_title}'"
+                            # Try to find task by title
+                            try:
+                                find_params = FindTaskParams(
+                                    user_id=user_id,
+                                    title=detected_intent.task_title
+                                )
+                                find_result = find_task(db, find_params)
+                                if find_result:
+                                    task_details = f" '{find_result.title}' (#{find_result.task_id})"
+                            except:
+                                pass
                     confirmation_msg = f"✅ Task{task_details} ko complete mark kar doon? (Mark this task as complete?)\n\nReply 'yes' to confirm or 'no' to cancel."
                 elif detected_intent.operation == "incomplete":
+                    # Handle both ID and title for incomplete
+                    if not task_details:
+                        if detected_intent.task_id:
+                            task_details = f" #{detected_intent.task_id}"
+                        elif detected_intent.task_title:
+                            task_details = f" '{detected_intent.task_title}'"
+                            # Try to find task by title
+                            try:
+                                find_params = FindTaskParams(
+                                    user_id=user_id,
+                                    title=detected_intent.task_title
+                                )
+                                find_result = find_task(db, find_params)
+                                if find_result:
+                                    task_details = f" '{find_result.title}' (#{find_result.task_id})"
+                            except:
+                                pass
                     confirmation_msg = f"⏳ Task{task_details} ko incomplete mark kar doon? (Mark this task as incomplete?)\n\nReply 'yes' to confirm or 'no' to cancel."
                 elif detected_intent.operation == "update":
                     confirmation_msg = f"📝 Task{task_details} update kar doon? (Update this task?)\n\nReply 'yes' to confirm or 'no' to cancel."

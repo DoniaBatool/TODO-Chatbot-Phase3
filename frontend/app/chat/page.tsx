@@ -243,7 +243,7 @@ export default function ChatPage() {
           <div className="p-4 border-b border-theme">
             <button
               onClick={startNewChat}
-              className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2 justify-center"
+              className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 justify-center shadow-sm"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -262,13 +262,13 @@ export default function ChatPage() {
                   <button
                     key={conv.id}
                     onClick={() => loadConversation(userId, conv.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
+                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors border ${
                       conversationId === conv.id
-                        ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                        : 'hover:bg-theme-card text-theme-secondary'
+                        ? 'bg-blue-500/20 dark:bg-blue-500/30 text-blue-600 dark:text-blue-400 border-blue-500/40 dark:border-blue-500/50'
+                        : 'hover:bg-theme-card dark:hover:bg-theme-card/50 text-theme-secondary border-transparent hover:border-theme'
                     }`}
                   >
-                    <div className="text-sm font-medium truncate">
+                    <div className="text-sm font-medium truncate text-theme-primary">
                       {conv.title || `Chat ${conv.id}`}
                     </div>
                     <div className="text-xs text-theme-tertiary mt-1">
@@ -287,9 +287,9 @@ export default function ChatPage() {
           <div className="border-b border-theme bg-theme-surface p-4 flex items-center justify-between">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-theme-card rounded-lg transition-colors"
+              className="p-2 hover:bg-theme-card dark:hover:bg-theme-card/50 rounded-lg transition-colors text-theme-secondary hover:text-theme-primary"
             >
-              <svg className="w-5 h-5 text-theme-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
@@ -310,7 +310,8 @@ export default function ChatPage() {
                     <p>• Add tasks: &quot;Add task to call mom tomorrow&quot;</p>
                     <p>• Update by ID or title: &quot;Update task 1 title to Buy groceries&quot; or &quot;Update buy milk task title to Buy groceries&quot;</p>
                     <p>• Delete by ID or title: &quot;Delete task 2&quot; or &quot;Delete buy milk task&quot;</p>
-                    <p>• Mark complete: &quot;Mark task 1 as complete&quot;</p>
+                    <p>• Mark complete: &quot;Mark task 1 as complete&quot; or &quot;Mark buy milk task as complete&quot;</p>
+                    <p>• Mark incomplete: &quot;Mark task 1 as incomplete&quot; or &quot;Mark grocery task as incomplete&quot;</p>
                     <p>• Set due dates: &quot;Set due date for task 1 to Jan 20, 2026 3 PM&quot;</p>
                     <p>• Remove due dates: &quot;Remove due date from task 1&quot;</p>
                   </div>

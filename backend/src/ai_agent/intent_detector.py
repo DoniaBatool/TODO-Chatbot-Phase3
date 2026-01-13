@@ -494,6 +494,32 @@ class IntentDetector:
         task_id = self._extract_task_id(message)
         task_title = self._extract_task_title(message, message_lower) if not task_id else None
 
+        # Enhanced title extraction for complete/incomplete patterns
+        # "mark buy milk as complete" or "complete grocery task"
+        if not task_id and not task_title:
+            # Pattern: "mark [title] as complete"
+            title_match = re.search(
+                r'mark\s+(.+?)\s+as\s+(?:complete|done)',
+                message_lower
+            )
+            if title_match:
+                title = title_match.group(1).strip()
+                # Remove "task" if present
+                title = re.sub(r'\s+task\s*$', '', title, flags=re.IGNORECASE)
+                if title and len(title) > 2 and not title.isdigit():
+                    task_title = title
+
+        # Pattern: "complete [title] task"
+        if not task_id and not task_title:
+            title_match = re.search(
+                r'complete\s+(.+?)(?:\s+task|$)',
+                message_lower
+            )
+            if title_match:
+                title = title_match.group(1).strip()
+                if title and len(title) > 2 and not title.isdigit():
+                    task_title = title
+
         # Check conversation context
         if not task_id and not task_title:
             task_id = self._get_context_task_id(conversation_history)
@@ -523,6 +549,32 @@ class IntentDetector:
 
         task_id = self._extract_task_id(message)
         task_title = self._extract_task_title(message, message_lower) if not task_id else None
+
+        # Enhanced title extraction for incomplete patterns
+        # "mark buy milk as incomplete" or "unmark grocery task"
+        if not task_id and not task_title:
+            # Pattern: "mark [title] as incomplete"
+            title_match = re.search(
+                r'mark\s+(.+?)\s+as\s+(?:incomplete|not\s+done|pending|undone)',
+                message_lower
+            )
+            if title_match:
+                title = title_match.group(1).strip()
+                # Remove "task" if present
+                title = re.sub(r'\s+task\s*$', '', title, flags=re.IGNORECASE)
+                if title and len(title) > 2 and not title.isdigit():
+                    task_title = title
+
+        # Pattern: "unmark [title] task" or "set [title] to incomplete"
+        if not task_id and not task_title:
+            title_match = re.search(
+                r'(?:unmark|set)\s+(.+?)(?:\s+task|\s+to\s+incomplete|$)',
+                message_lower
+            )
+            if title_match:
+                title = title_match.group(1).strip()
+                if title and len(title) > 2 and not title.isdigit():
+                    task_title = title
 
         # Check conversation context
         if not task_id and not task_title:
