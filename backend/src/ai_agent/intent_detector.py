@@ -57,6 +57,8 @@ class IntentDetector:
         re.compile(r'change\s+(?:the\s+)?task', re.IGNORECASE),
         re.compile(r'edit\s+(?:the\s+)?task', re.IGNORECASE),
         re.compile(r'modify\s+(?:the\s+)?task', re.IGNORECASE),
+        # Also match "update X to Y" pattern (without "task" word)
+        re.compile(r'^update\s+\w+.*\s+to\s+', re.IGNORECASE),
     ]
 
     # Patterns for DELETE intent
@@ -136,6 +138,12 @@ class IntentDetector:
                 # User cancelled - return None (don't execute)
                 logger.info(f"User cancelled operation: {pending_confirmation['operation']}")
                 return None
+        
+        # STEP 1.5: Check if assistant was asking for task specification (follow-up)
+        # Example: User says "mark the task complete", assistant asks "which task?", user says "buy apples"
+        follow_up_intent = self._check_follow_up_response(message, message_lower, conversation_history)
+        if follow_up_intent:
+            return follow_up_intent
 
         # STEP 2: Check for UPDATE intent
         if self._matches_any_pattern(message, self.UPDATE_PATTERNS):
@@ -172,6 +180,94 @@ class IntentDetector:
         if len(words) <= 3:  # Short message like "yes", "yes please", "haan kar do"
             return any(keyword in message_lower for keyword in keywords)
         return False
+
+
+    def _check_follow_up_response(
+        self,
+        message: str,
+        message_lower: str,
+        conversation_history: List[Dict[str, str]]
+    ) -> Optional[Intent]:
+        """Check if user is providing task name as follow-up to assistant's clarification question.
+        
+        Example:
+            User: "mark the task complete"
+            Assistant: "Please specify which task..."
+            User: "buy apples" <- This is a follow-up
+        
+        Returns:
+            Intent object if follow-up detected, None otherwise
+        """
+        if not conversation_history:
+            return None
+        
+        # Check last assistant message for clarification patterns
+        for msg in reversed(conversation_history[-3:]):
+            if msg.get('role') == 'assistant':
+                assistant_msg = msg.get('content', '').lower()
+                
+                # Patterns indicating assistant is asking for task specification
+                asking_patterns = [
+                    'which task', 'specify which task', 'specify the task',
+                    'task you want', 'task you would like', 'task to', 
+                    'provide the name', 'mention the task', 'task number',
+                    'kaunsa task', 'konsa task', 'task batao'
+                ]
+                
+                is_asking = any(pattern in assistant_msg for pattern in asking_patterns)
+                
+                if is_asking:
+                    # Determine operation from assistant message
+                    operation = None
+                    if 'update' in assistant_msg or 'change' in assistant_msg:
+                        operation = 'update_ask'
+                    elif 'delete' in assistant_msg or 'remove' in assistant_msg:
+                        operation = 'delete'
+                    elif 'complete' in assistant_msg and 'incomplete' not in assistant_msg:
+                        operation = 'complete'
+                    elif 'incomplete' in assistant_msg or 'not done' in assistant_msg or 'pending' in assistant_msg:
+                        operation = 'incomplete'
+                    
+                    if operation:
+                        # Extract task title from current message
+                        # Current message is likely just the task title
+                        task_title = message.strip()
+                        
+                        # Remove common prefixes
+                        task_title = re.sub(r'^(the|a|an|update|delete|remove|complete|mark)\s+', '', task_title, flags=re.IGNORECASE)
+                        # Remove common suffixes
+                        task_title = re.sub(r'\s+(task|ko\s+update|ko\s+delete|wala).*$', '', task_title, flags=re.IGNORECASE)
+                        
+                        if task_title and len(task_title) >= 2 and not task_title.isdigit():
+                            logger.info(f"Detected follow-up: operation={operation}, task_title='{task_title}'")
+                            
+                            # For update_ask, return without params to get update details
+                            if operation == 'update_ask':
+                                return Intent(
+                                    operation='update_ask',
+                                    task_id=None,
+                                    task_title=task_title,
+                                    params=None
+                                )
+                            elif operation == 'incomplete':
+                                return Intent(
+                                    operation='incomplete',
+                                    task_id=None,
+                                    task_title=task_title,
+                                    params={"completed": False},
+                                    needs_confirmation=True
+                                )
+                            else:
+                                # delete, complete - needs confirmation
+                                return Intent(
+                                    operation=operation,
+                                    task_id=None,
+                                    task_title=task_title,
+                                    needs_confirmation=True
+                                )
+                break  # Only check most recent assistant message
+        
+        return None
 
 
     def _check_pending_confirmation(
@@ -450,37 +546,75 @@ class IntentDetector:
 
         # Extract task identifier (ID or title)
         task_id = self._extract_task_id(message)
-        task_title = self._extract_task_title(message, message_lower) if not task_id else None
-
-        # Special pattern: "update [title] task to [new_title]" or "update the task [title] to [new_title]"
-        # Example: "update zoom class task to PIAIC CLASS" or "update the task buy milk to buy fruits"
-        if not task_id and not task_title:
-            # Pattern 1: "update the task X to Y"
+        
+        # Special pattern FIRST: "update the task X to Y" or "update X task to Y" or "update X to Y"
+        # Example: "update the task buy milk to buy vegetables" or "update buy milk task to buy fruits" or "update buy apples to buy fruits"
+        # This needs to extract BOTH old title (X) and new title (Y)
+        new_title_from_pattern = None
+        task_title = None
+        
+        if not task_id:
+            # Pattern 1: "update the task X to Y, ..."
+            # Match everything after "update the task" until "to", then everything after "to" until comma/keyword
             update_to_pattern = re.search(
-                r'update\s+the\s+task\s+(.+?)\s+to\s+(.+?)(?:$|,|\s+with|\s+and)',
+                r'update\s+the\s+task\s+(.+?)\s+to\s+(.+?)(?:,|\s+(?:with|and|priority|deadline|description|low|medium|high)|\s*$)',
                 message_lower,
                 re.IGNORECASE
             )
             if update_to_pattern:
                 task_title = update_to_pattern.group(1).strip()
+                new_title_from_pattern = update_to_pattern.group(2).strip()
                 # Clean up task title
                 task_title = re.sub(r'^(the|a|an)\s+', '', task_title, flags=re.IGNORECASE)
-                if task_title and len(task_title) >= 2:
-                    logger.info(f"Extracted task title from 'update the task X to Y' pattern: '{task_title}'")
+                logger.info(f"Extracted from 'update the task X to Y': task_title='{task_title}', new_title='{new_title_from_pattern}'")
             
             # Pattern 2: "update X task to Y" (without "the")
             if not task_title:
                 update_to_pattern = re.search(
-                    r'update\s+(.+?)\s+task\s+to\s+(.+?)(?:$|,|\s+with|\s+and)',
+                    r'update\s+(.+?)\s+task\s+to\s+(.+?)(?:,|\s+(?:with|and|priority|deadline|description|low|medium|high)|\s*$)',
                     message_lower,
                     re.IGNORECASE
                 )
                 if update_to_pattern:
                     task_title = update_to_pattern.group(1).strip()
+                    new_title_from_pattern = update_to_pattern.group(2).strip()
                     # Clean up task title
                     task_title = re.sub(r'^(the|a|an)\s+', '', task_title, flags=re.IGNORECASE)
-                    if task_title and len(task_title) >= 2:
-                        logger.info(f"Extracted task title from 'update X task to Y' pattern: '{task_title}'")
+                    logger.info(f"Extracted from 'update X task to Y': task_title='{task_title}', new_title='{new_title_from_pattern}'")
+            
+            # Pattern 3: "update X to Y" (without "the task" or "task")
+            # BUT: Must have "update" at the start and contain operation-looking title (not just "update it to X")
+            # Match words/spaces but explicitly look for " to " as delimiter
+            if not task_title and message_lower.startswith('update '):
+                # First, check if there's a " to " in the message after "update "
+                rest_of_message = message_lower[7:]  # Remove "update "
+                if ' to ' in rest_of_message:
+                    # Split by first occurrence of " to "
+                    parts = rest_of_message.split(' to ', 1)
+                    if len(parts) == 2:
+                        potential_title = parts[0].strip()
+                        rest = parts[1].strip()
+                        
+                        # Extract new title from rest (stop at comma or keywords)
+                        new_title_match = re.search(
+                            r'^(.+?)(?:,|\s+(?:with|and|priority|deadline|description|low|medium|high)|\s*$)',
+                            rest,
+                            re.IGNORECASE
+                        )
+                        if new_title_match:
+                            potential_new_title = new_title_match.group(1).strip()
+                            
+                            # Only accept if old title is not just "it" or "this"
+                            if potential_title not in ['it', 'this', 'that'] and len(potential_title) >= 2 and len(potential_new_title) >= 2:
+                                task_title = potential_title
+                                new_title_from_pattern = potential_new_title
+                                # Clean up task title
+                                task_title = re.sub(r'^(the|a|an)\s+', '', task_title, flags=re.IGNORECASE)
+                                logger.info(f"Extracted from 'update X to Y': task_title='{task_title}', new_title='{new_title_from_pattern}'")
+        
+        # If not found by special pattern, try normal title extraction
+        if not task_id and not task_title:
+            task_title = self._extract_task_title(message, message_lower)
 
         # If neither found, check conversation context for recently mentioned task
         if not task_id and not task_title:
@@ -572,10 +706,16 @@ class IntentDetector:
 
         # Extract update parameters from message
         params = {}
+        
+        # If new_title_from_pattern was extracted, add it to params
+        if new_title_from_pattern:
+            params['title'] = new_title_from_pattern
+            logger.info(f"Added new title to params: '{new_title_from_pattern}'")
 
         # Check if user is providing UPDATE DETAILS (not just asking what to update)
         # This is CRITICAL: Detect if user is giving all details at once
         has_update_details = any([
+            new_title_from_pattern is not None,  # "update X to Y" pattern detected
             'change' in message_lower and 'to' in message_lower,
             'update' in message_lower and ('to' in message_lower or ':' in message_lower),
             'set' in message_lower and ('to' in message_lower or 'as' in message_lower),
@@ -598,30 +738,24 @@ class IntentDetector:
 
         # User is providing update details - extract them!
 
-        # Extract new title
-        # Patterns: "change title to X", "update title to X", "set title to X", "update the title: X"
-        # Special: "update [task_title] task to [new_title]" - extract new title
-        title_patterns = [
-            # Pattern: "update [task] task to [new_title]" - extract the new title (group 2)
-            r'update\s+(?:the\s+)?(.+?)\s+task\s+to\s+(.+?)(?:$|,|\s+with|\s+and|priority|deadline|description)',
-            r'(?:change|update|set)\s+(?:the\s+)?title\s*(?:to|:)\s*(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
-            r'(?:change|update)\s+(?:it\s+to|to)\s+(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
-            r'title\s*(?:to|:)\s*(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
-            r'update\s+the\s+title:?\s*(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
-        ]
-        for pattern in title_patterns:
-            title_match = re.search(pattern, message_lower)
-            if title_match:
-                # For "update X task to Y" pattern, group 2 is the new title
-                if 'task\s+to' in pattern and len(title_match.groups()) >= 2:
-                    title = title_match.group(2).strip()
-                else:
+        # Extract new title (only if not already extracted by "update X to Y" pattern)
+        if 'title' not in params:
+            # Patterns: "change title to X", "update title to X", "set title to X", "update the title: X"
+            title_patterns = [
+                r'(?:change|update|set)\s+(?:the\s+)?title\s*(?:to|:)\s*(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
+                r'(?:change|update)\s+(?:it\s+to|to)\s+(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
+                r'title\s*(?:to|:)\s*(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
+                r'update\s+the\s+title:?\s*(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
+            ]
+            for pattern in title_patterns:
+                title_match = re.search(pattern, message_lower)
+                if title_match:
                     title = title_match.group(1).strip()
-                # Clean up title - remove trailing keywords
-                title = re.sub(r'\s+(priority|deadline|description|and|with|update|delete|complete|mark).*$', '', title, flags=re.IGNORECASE)
-                if title and len(title) > 1:
-                    params['title'] = title
-                    break
+                    # Clean up title - remove trailing keywords
+                    title = re.sub(r'\s+(priority|deadline|description|and|with|update|delete|complete|mark).*$', '', title, flags=re.IGNORECASE)
+                    if title and len(title) > 1:
+                        params['title'] = title
+                        break
 
         # Extract priority
         for priority_level, keywords in self.PRIORITY_MAP.items():
