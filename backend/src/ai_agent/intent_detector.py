@@ -310,8 +310,8 @@ class IntentDetector:
             if title and len(title) > 2 and not title.isdigit():  # Valid title, not a number
                 return title
 
-        # Pattern 4: After update/delete/complete, extract title directly
-        # "update buy milk" or "delete grocery shopping" or "delete the task go to saturday class this week"
+        # Pattern 4: After update/delete/complete, extract title directly (including partial titles)
+        # "update buy milk" or "delete grocery shopping" or "delete milk" (partial)
         for op in ['update', 'delete', 'remove', 'complete', 'mark']:
             if op in message_lower:
                 # Handle "delete the task [full title]" or "update the task [full title]" pattern
@@ -330,21 +330,25 @@ class IntentDetector:
                     if title and len(title) > 2 and title.lower() != 'the' and not title.isdigit():
                         return title
                 
-                # Handle "update [title]" pattern (without "task" word) - but only if "task" not mentioned
-                if 'task' not in message_lower:
-                    match = re.search(
-                        rf'{op}\s+(.+?)(?=\s+(?:to\s+(?:update|set|change)|title\s+to|priority\s+to|deadline|description|update|delete|complete|mark|$))',
-                        message_lower,
-                        re.IGNORECASE | re.DOTALL
-                    )
-                    if match:
-                        title = match.group(1).strip()
-                        # Remove common stop words
-                        title = re.sub(r'^(the|a|an)\s+', '', title, flags=re.IGNORECASE)
-                        # Remove trailing update keywords
-                        title = re.sub(r'\s+(to|with|and|title|priority|deadline|description|update|delete|complete|mark)\s+.*$', '', title, flags=re.IGNORECASE)
-                        if title and len(title) > 2 and not title.isdigit() and title.lower() != 'the':
-                            return title
+                # Handle "update [title]" or "delete [partial title]" pattern (without "task" word)
+                # This captures partial titles like "delete milk" or "update grocery"
+                # Match everything after the operation until end or next keyword
+                match = re.search(
+                    rf'{op}\s+(?:the\s+)?(.+?)(?=\s+(?:to\s+(?:update|set|change)|title\s+to|priority\s+to|deadline|description|update|delete|complete|mark|as\s+complete|as\s+incomplete|$))',
+                    message_lower,
+                    re.IGNORECASE | re.DOTALL
+                )
+                if match:
+                    title = match.group(1).strip()
+                    # Remove common stop words at start
+                    title = re.sub(r'^(the|a|an)\s+', '', title, flags=re.IGNORECASE)
+                    # Remove trailing keywords but keep partial title
+                    title = re.sub(r'\s+(to|with|and|title|priority|deadline|description|update|delete|complete|mark|task)\s+.*$', '', title, flags=re.IGNORECASE)
+                    # Remove "task" if it's at the end
+                    title = re.sub(r'\s+task\s*$', '', title, flags=re.IGNORECASE)
+                    # Accept even single words (partial titles) - minimum 2 chars
+                    if title and len(title) >= 2 and not title.isdigit() and title.lower() not in ['the', 'a', 'an']:
+                        return title
 
         return None
 

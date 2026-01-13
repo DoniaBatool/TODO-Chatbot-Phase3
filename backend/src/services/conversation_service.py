@@ -124,7 +124,7 @@ class ConversationService:
 
     @log_execution_time("add_message")
     def add_message(
-        self, conversation_id: int, user_id: str, role: str, content: str
+        self, conversation_id: int, user_id: str, role: str, content: str, tool_calls: Optional[List[Dict[str, Any]]] = None
     ) -> Message:
         """Add a message to a conversation.
 
@@ -158,6 +158,7 @@ class ConversationService:
             user_id=user_id,
             role=role,
             content=content,
+            tool_calls=tool_calls,
             created_at=datetime.utcnow()
         )
 

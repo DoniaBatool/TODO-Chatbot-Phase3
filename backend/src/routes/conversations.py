@@ -90,8 +90,12 @@ async def get_conversation_messages(
         "conversation_id": conversation_id,
         "messages": [
             {
+                "id": msg.id,
+                "sender": msg.role,  # For compatibility with frontend
                 "role": msg.role,
+                "message": msg.content,  # For compatibility with frontend
                 "content": msg.content,
+                "tool_calls": msg.tool_calls if msg.tool_calls else None,
                 "created_at": msg.created_at.isoformat()
             }
             for msg in messages

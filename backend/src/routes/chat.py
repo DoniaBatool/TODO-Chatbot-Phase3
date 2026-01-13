@@ -473,7 +473,7 @@ async def chat(
                 # User provided update details - FORCE execution
                 task_id = detected_intent.task_id
 
-                # If task_title provided instead of ID, find it first
+                # If task_title provided (even partial), use find_task with fuzzy matching
                 if not task_id and detected_intent.task_title:
                     try:
                         find_params = FindTaskParams(
@@ -482,8 +482,68 @@ async def chat(
                         )
                         find_result = find_task(db, find_params)
                         if find_result:
-                            task_id = find_result.task_id
-                            logger.info(f"Found task by title: {detected_intent.task_title} -> task_id={task_id}")
+                            # Check confidence - if low, ask for confirmation
+                            if find_result.confidence_score < 80:
+                                confirmation_msg = (
+                                    f"🔍 I found a task that might match '{detected_intent.task_title}':\n"
+                                    f"   '{find_result.title}' (Task #{find_result.task_id}) - {find_result.confidence_score}% match\n\n"
+                                    f"Is this the task you want to update?\n"
+                                    f"Reply 'yes' to confirm or 'no' to cancel."
+                                )
+                                
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="user",
+                                    content=request.message
+                                )
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="assistant",
+                                    content=confirmation_msg
+                                )
+                                conversation_service.update_conversation_timestamp(conversation_id)
+                                
+                                return ChatResponse(
+                                    conversation_id=conversation_id,
+                                    response=confirmation_msg,
+                                    tool_calls=[]
+                                )
+                            else:
+                                task_id = find_result.task_id
+                                logger.info(f"Found task by title (high confidence): '{detected_intent.task_title}' -> task_id={task_id}, confidence={find_result.confidence_score}%")
+                        else:
+                            # No match - list tasks to help
+                            list_params = ListTasksParams(user_id=user_id, status="all")
+                            list_result = list_tasks(db, list_params)
+                            if list_result.tasks:
+                                task_list = "\n".join([f"  • #{t['task_id']}: {t['title']}" for t in list_result.tasks[:10]])
+                                error_msg = (
+                                    f"I couldn't find a task matching '{detected_intent.task_title}'.\n\n"
+                                    f"Here are your current tasks:\n{task_list}\n\n"
+                                    f"Please specify the task by ID or exact title."
+                                )
+                                
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="user",
+                                    content=request.message
+                                )
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="assistant",
+                                    content=error_msg
+                                )
+                                conversation_service.update_conversation_timestamp(conversation_id)
+                                
+                                return ChatResponse(
+                                    conversation_id=conversation_id,
+                                    response=error_msg,
+                                    tool_calls=[]
+                                )
                     except Exception as e:
                         logger.error(f"Failed to find task: {e}")
 
@@ -590,7 +650,7 @@ async def chat(
             elif detected_intent.operation == "delete" and not detected_intent.needs_confirmation:
                 task_id = detected_intent.task_id
 
-                # If task_title provided, find it first
+                # If task_title provided (even partial), use find_task with fuzzy matching
                 if not task_id and detected_intent.task_title:
                     try:
                         find_params = FindTaskParams(
@@ -599,7 +659,71 @@ async def chat(
                         )
                         find_result = find_task(db, find_params)
                         if find_result:
-                            task_id = find_result.task_id
+                            # Check confidence - if low, ask for confirmation
+                            if find_result.confidence_score < 80:
+                                # Low confidence match - ask for confirmation
+                                confirmation_msg = (
+                                    f"🔍 I found a task that might match '{detected_intent.task_title}':\n"
+                                    f"   '{find_result.title}' (Task #{find_result.task_id}) - {find_result.confidence_score}% match\n\n"
+                                    f"Is this the task you want to delete?\n"
+                                    f"Reply 'yes' to confirm or 'no' to cancel."
+                                )
+                                
+                                # Store pending confirmation
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="user",
+                                    content=request.message
+                                )
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="assistant",
+                                    content=confirmation_msg
+                                )
+                                conversation_service.update_conversation_timestamp(conversation_id)
+                                
+                                return ChatResponse(
+                                    conversation_id=conversation_id,
+                                    response=confirmation_msg,
+                                    tool_calls=[]
+                                )
+                            else:
+                                # High confidence - proceed
+                                task_id = find_result.task_id
+                                logger.info(f"Found task by title (high confidence): '{detected_intent.task_title}' -> task_id={task_id}, confidence={find_result.confidence_score}%")
+                        else:
+                            # No match found - list tasks to help user
+                            list_params = ListTasksParams(user_id=user_id, status="all")
+                            list_result = list_tasks(db, list_params)
+                            if list_result.tasks:
+                                task_list = "\n".join([f"  • #{t['task_id']}: {t['title']}" for t in list_result.tasks[:10]])
+                                error_msg = (
+                                    f"I couldn't find a task matching '{detected_intent.task_title}'.\n\n"
+                                    f"Here are your current tasks:\n{task_list}\n\n"
+                                    f"Please specify the task by ID or exact title."
+                                )
+                                
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="user",
+                                    content=request.message
+                                )
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="assistant",
+                                    content=error_msg
+                                )
+                                conversation_service.update_conversation_timestamp(conversation_id)
+                                
+                                return ChatResponse(
+                                    conversation_id=conversation_id,
+                                    response=error_msg,
+                                    tool_calls=[]
+                                )
                     except Exception as e:
                         logger.error(f"Failed to find task: {e}")
 
@@ -619,7 +743,7 @@ async def chat(
             elif detected_intent.operation == "complete" and not detected_intent.needs_confirmation:
                 task_id = detected_intent.task_id
 
-                # If task_title provided, find it first
+                # If task_title provided (even partial), use find_task with fuzzy matching
                 if not task_id and detected_intent.task_title:
                     try:
                         find_params = FindTaskParams(
@@ -628,7 +752,68 @@ async def chat(
                         )
                         find_result = find_task(db, find_params)
                         if find_result:
-                            task_id = find_result.task_id
+                            # Check confidence - if low, ask for confirmation
+                            if find_result.confidence_score < 80:
+                                confirmation_msg = (
+                                    f"🔍 I found a task that might match '{detected_intent.task_title}':\n"
+                                    f"   '{find_result.title}' (Task #{find_result.task_id}) - {find_result.confidence_score}% match\n\n"
+                                    f"Is this the task you want to mark as complete?\n"
+                                    f"Reply 'yes' to confirm or 'no' to cancel."
+                                )
+                                
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="user",
+                                    content=request.message
+                                )
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="assistant",
+                                    content=confirmation_msg
+                                )
+                                conversation_service.update_conversation_timestamp(conversation_id)
+                                
+                                return ChatResponse(
+                                    conversation_id=conversation_id,
+                                    response=confirmation_msg,
+                                    tool_calls=[]
+                                )
+                            else:
+                                task_id = find_result.task_id
+                                logger.info(f"Found task by title (high confidence): '{detected_intent.task_title}' -> task_id={task_id}, confidence={find_result.confidence_score}%")
+                        else:
+                            # No match - list tasks
+                            list_params = ListTasksParams(user_id=user_id, status="all")
+                            list_result = list_tasks(db, list_params)
+                            if list_result.tasks:
+                                task_list = "\n".join([f"  • #{t['task_id']}: {t['title']}" for t in list_result.tasks[:10]])
+                                error_msg = (
+                                    f"I couldn't find a task matching '{detected_intent.task_title}'.\n\n"
+                                    f"Here are your current tasks:\n{task_list}\n\n"
+                                    f"Please specify the task by ID or exact title."
+                                )
+                                
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="user",
+                                    content=request.message
+                                )
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="assistant",
+                                    content=error_msg
+                                )
+                                conversation_service.update_conversation_timestamp(conversation_id)
+                                
+                                return ChatResponse(
+                                    conversation_id=conversation_id,
+                                    response=error_msg,
+                                    tool_calls=[]
+                                )
                     except Exception as e:
                         logger.error(f"Failed to find task: {e}")
 
@@ -648,7 +833,7 @@ async def chat(
             elif detected_intent.operation == "incomplete" and not detected_intent.needs_confirmation:
                 task_id = detected_intent.task_id
 
-                # If task_title provided, find it first
+                # If task_title provided (even partial), use find_task with fuzzy matching
                 if not task_id and detected_intent.task_title:
                     try:
                         find_params = FindTaskParams(
@@ -657,7 +842,68 @@ async def chat(
                         )
                         find_result = find_task(db, find_params)
                         if find_result:
-                            task_id = find_result.task_id
+                            # Check confidence - if low, ask for confirmation
+                            if find_result.confidence_score < 80:
+                                confirmation_msg = (
+                                    f"🔍 I found a task that might match '{detected_intent.task_title}':\n"
+                                    f"   '{find_result.title}' (Task #{find_result.task_id}) - {find_result.confidence_score}% match\n\n"
+                                    f"Is this the task you want to mark as incomplete?\n"
+                                    f"Reply 'yes' to confirm or 'no' to cancel."
+                                )
+                                
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="user",
+                                    content=request.message
+                                )
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="assistant",
+                                    content=confirmation_msg
+                                )
+                                conversation_service.update_conversation_timestamp(conversation_id)
+                                
+                                return ChatResponse(
+                                    conversation_id=conversation_id,
+                                    response=confirmation_msg,
+                                    tool_calls=[]
+                                )
+                            else:
+                                task_id = find_result.task_id
+                                logger.info(f"Found task by title (high confidence): '{detected_intent.task_title}' -> task_id={task_id}, confidence={find_result.confidence_score}%")
+                        else:
+                            # No match - list tasks
+                            list_params = ListTasksParams(user_id=user_id, status="all")
+                            list_result = list_tasks(db, list_params)
+                            if list_result.tasks:
+                                task_list = "\n".join([f"  • #{t['task_id']}: {t['title']}" for t in list_result.tasks[:10]])
+                                error_msg = (
+                                    f"I couldn't find a task matching '{detected_intent.task_title}'.\n\n"
+                                    f"Here are your current tasks:\n{task_list}\n\n"
+                                    f"Please specify the task by ID or exact title."
+                                )
+                                
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="user",
+                                    content=request.message
+                                )
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="assistant",
+                                    content=error_msg
+                                )
+                                conversation_service.update_conversation_timestamp(conversation_id)
+                                
+                                return ChatResponse(
+                                    conversation_id=conversation_id,
+                                    response=error_msg,
+                                    tool_calls=[]
+                                )
                     except Exception as e:
                         logger.error(f"Failed to find task: {e}")
 
@@ -1021,12 +1267,13 @@ async def chat(
             content=request.message
         )
 
-        # Store assistant response in database (T066)
+        # Store assistant response in database (T066) with tool_calls
         conversation_service.add_message(
             conversation_id=conversation_id,
             user_id=user_id,
             role="assistant",
-            content=agent_response.response
+            content=agent_response.response,
+            tool_calls=executed_tools if executed_tools else None
         )
 
         # Update conversation timestamp (T067)

@@ -7,7 +7,7 @@ from alembic import context
 
 # Import SQLModel and our models
 from sqlmodel import SQLModel
-from src.models import User, Task  # noqa: F401
+from src.models import User, Task, Conversation, Message  # noqa: F401
 from src.config import settings
 
 # this is the Alembic Config object, which provides

@@ -132,14 +132,14 @@ export default function ChatPage() {
   const loadConversation = async (userId: string, convId: number) => {
     try {
       setConversationId(convId);
-      const messagesResponse = await apiFetch(`/api/${userId}/conversations/${convId}`) as any;
+      const messagesResponse = await apiFetch(`/api/conversations/${convId}/messages`) as any;
       if (messagesResponse.messages) {
         const loadedMessages: Message[] = messagesResponse.messages.map((msg: any) => ({
-          id: msg.id.toString(),
-          role: msg.sender === 'user' ? 'user' : 'assistant',
-          content: msg.message,
+          id: msg.id?.toString() || Date.now().toString(),
+          role: (msg.sender || msg.role) === 'user' ? 'user' : 'assistant',
+          content: msg.message || msg.content || '',
           timestamp: new Date(msg.created_at),
-          tool_calls: msg.tool_calls,
+          tool_calls: msg.tool_calls || null,
         }));
         setMessages(loadedMessages);
       } else {
@@ -191,31 +191,18 @@ export default function ChatPage() {
       }) as any;
 
       // Update conversation ID if new conversation was created
-      if (response.conversation_id) {
-        const newConvId = response.conversation_id;
-        if (newConvId !== conversationId) {
-          setConversationId(newConvId);
-          // Reload conversations list to include new conversation
-          await loadConversations(userId);
-        }
+      const finalConvId = response.conversation_id || conversationId;
+      if (response.conversation_id && response.conversation_id !== conversationId) {
+        setConversationId(response.conversation_id);
       }
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response.response,
-        timestamp: new Date(),
-        tool_calls: response.tool_calls,
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-
-      // Reload conversations to update titles/timestamps
-      // Also reload current conversation to get latest messages from DB (ensures persistence)
+      // Reload conversations list to update titles/timestamps
       await loadConversations(userId);
-      if (response.conversation_id) {
-        // Reload current conversation to ensure we have all messages from database
-        await loadConversation(userId, response.conversation_id);
+      
+      // Reload current conversation from DB to get all persisted messages (including tool_calls)
+      // This ensures chat history is properly loaded and persisted
+      if (finalConvId) {
+        await loadConversation(userId, finalConvId);
       }
     } catch (error) {
       console.error('Failed to send message:', error);

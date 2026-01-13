@@ -2,9 +2,9 @@
 
 from datetime import datetime
 from enum import Enum as PyEnum
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
-from sqlalchemy import Column, Enum
+from sqlalchemy import Column, Enum, JSON
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -194,6 +194,11 @@ class Message(SQLModel, table=True):
     )
     content: str = Field(
         description="Message text content"
+    )
+    tool_calls: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        sa_column=Column(JSON),
+        description="Tool calls associated with this message (for assistant messages)"
     )
     created_at: datetime = Field(
         default_factory=datetime.utcnow,
