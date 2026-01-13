@@ -90,11 +90,17 @@ export default function ChatPage() {
     setIsAuthenticated(true);
     setUserId(user);
     
-    // Load conversations list
-    loadConversations(user);
+    // Load conversations list and latest conversation
+    const initializeChat = async () => {
+      try {
+        await loadConversations(user);
+        await loadLatestConversation(user);
+      } catch (error) {
+        console.error('Failed to initialize chat:', error);
+      }
+    };
     
-    // Load latest conversation
-    loadLatestConversation(user);
+    initializeChat();
   }, [router]);
 
   const loadConversations = async (userId: string) => {
@@ -205,7 +211,12 @@ export default function ChatPage() {
       setMessages((prev) => [...prev, assistantMessage]);
 
       // Reload conversations to update titles/timestamps
+      // Also reload current conversation to get latest messages from DB (ensures persistence)
       await loadConversations(userId);
+      if (response.conversation_id) {
+        // Reload current conversation to ensure we have all messages from database
+        await loadConversation(userId, response.conversation_id);
+      }
     } catch (error) {
       console.error('Failed to send message:', error);
       const errorMessage: Message = {

@@ -269,7 +269,25 @@ async def run_agent(
                     response_text = f"I've marked task {task_id} as complete."
                 elif tool_name == 'update_task':
                     task_id = tool_params.get('task_id', '')
-                    response_text = f"I've updated task {task_id}."
+                    updates = []
+                    if 'title' in tool_params:
+                        updates.append(f"title to '{tool_params['title']}'")
+                    if 'priority' in tool_params:
+                        updates.append(f"priority to {tool_params['priority']}")
+                    if 'due_date' in tool_params:
+                        if tool_params['due_date']:
+                            updates.append("due date")
+                        else:
+                            updates.append("removed due date")
+                    if 'description' in tool_params:
+                        updates.append("description")
+                    if 'completed' in tool_params:
+                        updates.append(f"completed status to {tool_params['completed']}")
+                    
+                    if updates:
+                        response_text = f"I've updated task {task_id}: {', '.join(updates)}."
+                    else:
+                        response_text = f"I've updated task {task_id}."
                 elif tool_name == 'delete_task':
                     task_id = tool_params.get('task_id', '')
                     response_text = f"I've removed task {task_id} from your tasks."

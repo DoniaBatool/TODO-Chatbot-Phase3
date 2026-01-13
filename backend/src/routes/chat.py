@@ -26,6 +26,7 @@ from ..utils.performance import log_execution_time, track_performance
 import logging
 import json
 import time
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -467,7 +468,8 @@ async def chat(
                 )
 
             # Handle UPDATE intent (with full params or after confirmation)
-            if detected_intent.operation == "update" and detected_intent.params and not detected_intent.needs_confirmation:
+            # Also handle update_ask follow-up where user provides details
+            if (detected_intent.operation == "update" or detected_intent.operation == "update_ask") and detected_intent.params and not detected_intent.needs_confirmation:
                 # User provided update details - FORCE execution
                 task_id = detected_intent.task_id
 
@@ -481,8 +483,56 @@ async def chat(
                         find_result = find_task(db, find_params)
                         if find_result:
                             task_id = find_result.task_id
+                            logger.info(f"Found task by title: {detected_intent.task_title} -> task_id={task_id}")
                     except Exception as e:
                         logger.error(f"Failed to find task: {e}")
+
+                # If still no task_id, try to get from conversation context
+                if not task_id:
+                    # Check recent conversation for task mentions - look for task title or ID
+                    for msg in reversed(conversation_history[-10:]):
+                        if msg.get('role') == 'user':
+                            user_msg = msg.get('content', '').lower()
+                            # Pattern 1: "update the task: [title]" or "i want to update the task: [title]"
+                            task_match = re.search(r'(?:update|want\s+to\s+update)\s+(?:the\s+)?task:?\s+(.+?)(?:\s+update|\s+title|\s+priority|\s+deadline|$)', user_msg)
+                            if task_match:
+                                task_title_from_context = task_match.group(1).strip()
+                                # Remove "the" if present at start
+                                task_title_from_context = re.sub(r'^(the|a|an)\s+', '', task_title_from_context, flags=re.IGNORECASE)
+                                if task_title_from_context and len(task_title_from_context) > 2 and task_title_from_context.lower() != 'the':
+                                    try:
+                                        find_params = FindTaskParams(
+                                            user_id=user_id,
+                                            title=task_title_from_context
+                                        )
+                                        find_result = find_task(db, find_params)
+                                        if find_result:
+                                            task_id = find_result.task_id
+                                            logger.info(f"Found task from context: '{task_title_from_context}' -> task_id={task_id}")
+                                            break
+                                    except Exception as e:
+                                        logger.error(f"Failed to find task from context: {e}")
+                        
+                        # Also check assistant messages for task mentions
+                        if msg.get('role') == 'assistant':
+                            assistant_msg = msg.get('content', '').lower()
+                            # Pattern: "task '[title]'" or "task \"title\""
+                            task_match = re.search(r"task\s+['\"](.+?)['\"]", assistant_msg)
+                            if task_match:
+                                task_title_from_context = task_match.group(1).strip()
+                                if task_title_from_context and len(task_title_from_context) > 2:
+                                    try:
+                                        find_params = FindTaskParams(
+                                            user_id=user_id,
+                                            title=task_title_from_context
+                                        )
+                                        find_result = find_task(db, find_params)
+                                        if find_result:
+                                            task_id = find_result.task_id
+                                            logger.info(f"Found task from assistant context: '{task_title_from_context}' -> task_id={task_id}")
+                                            break
+                                    except Exception as e:
+                                        logger.error(f"Failed to find task from assistant context: {e}")
 
                 if task_id:
                     # Build update params - only include fields that were actually provided
@@ -519,9 +569,22 @@ async def chat(
                     })
 
                     logger.info(
-                        f"FORCED UPDATE: task_id={task_id}, params={detected_intent.params}",
-                        extra={"user_id": user_id, "task_id": task_id}
+                        f"FORCED UPDATE: task_id={task_id}, update_params={update_params}",
+                        extra={
+                            "user_id": user_id, 
+                            "task_id": task_id,
+                            "update_params": update_params,
+                            "detected_intent_params": detected_intent.params
+                        }
                     )
+                    
+                    # If update_params only has task_id, that means no actual updates were provided
+                    # This shouldn't happen, but log a warning if it does
+                    if len(update_params) == 1:
+                        logger.warning(
+                            f"Update intent detected but no update params provided! task_id={task_id}",
+                            extra={"user_id": user_id, "detected_intent": str(detected_intent)}
+                        )
 
             # Handle DELETE intent (after confirmation)
             elif detected_intent.operation == "delete" and not detected_intent.needs_confirmation:

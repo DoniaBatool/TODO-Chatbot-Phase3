@@ -268,39 +268,83 @@ class IntentDetector:
         - "update the grocery task"
         - "delete buy milk task"
         - "update task: buy fruits"
+        - "update the task: go to saturday class"
+        - "delete the task go to saturday class this week"
         - "update buy milk" (without "task" word)
         """
-        # Pattern 1: "the [title] task"
-        match = re.search(r'the\s+(.+?)\s+task', message_lower)
-        if match:
-            return match.group(1).strip()
-
-        # Pattern 2: "task [title]" or "task: [title]"
-        match = re.search(r'task:?\s+(.+?)(?:\s+to\s+|\s+title\s+to\s+|$)', message_lower)
+        # Pattern 1: "the task [title]" or "the task: [title]" - MOST COMMON
+        # "update the task: go to saturday class" or "delete the task go to saturday class this week"
+        # Capture everything after "the task" until end or next operation keyword
+        # Use DOTALL to match across newlines, and make sure we capture the full title
+        match = re.search(
+            r'the\s+task:?\s+(.+?)(?=\s+(?:to\s+(?:update|set|change)|title\s+to|priority\s+to|deadline|description|update|delete|complete|mark|$))',
+            message_lower,
+            re.IGNORECASE | re.DOTALL
+        )
         if match:
             title = match.group(1).strip()
-            # Remove trailing words like "to", "with", etc. but keep title
-            title = re.sub(r'\s+(to|with|and|title|priority|deadline|description)\s.*', '', title, flags=re.IGNORECASE)
-            if title and len(title) > 2:  # Valid title
+            # Remove trailing update keywords but keep the full title
+            title = re.sub(r'\s+(to\s+(?:update|set|change)|title\s+to|priority\s+to|deadline|description|update|delete|complete|mark)\s+.*$', '', title, flags=re.IGNORECASE)
+            # Remove "the" prefix if it's the only word or at the start
+            if title.lower().startswith('the '):
+                title = title[4:].strip()
+            # Don't return if title is just "the"
+            if title and len(title) > 2 and title.lower() != 'the':  # Valid title
                 return title
 
-        # Pattern 3: After update/delete/complete, extract title directly
-        # "update buy milk" or "delete grocery shopping"
+        # Pattern 2: "the [title] task" - "update the grocery task"
+        match = re.search(r'the\s+(.+?)\s+task', message_lower)
+        if match:
+            title = match.group(1).strip()
+            if title and len(title) > 2 and title.lower() != 'the':  # Valid title, not just "the"
+                return title
+
+        # Pattern 3: "task [title]" or "task: [title]" - "update task: buy fruits"
+        match = re.search(r'task:?\s+(.+?)(?:\s+to\s+|\s+title\s+to\s+|$|update|delete|priority|deadline|description)', message_lower)
+        if match:
+            title = match.group(1).strip()
+            # Remove "the" prefix if present
+            title = re.sub(r'^(the|a|an)\s+', '', title, flags=re.IGNORECASE)
+            # Remove trailing words like "to", "with", etc. but keep title
+            title = re.sub(r'\s+(to|with|and|title|priority|deadline|description|update|delete)\s.*', '', title, flags=re.IGNORECASE)
+            if title and len(title) > 2 and not title.isdigit():  # Valid title, not a number
+                return title
+
+        # Pattern 4: After update/delete/complete, extract title directly
+        # "update buy milk" or "delete grocery shopping" or "delete the task go to saturday class this week"
         for op in ['update', 'delete', 'remove', 'complete', 'mark']:
             if op in message_lower:
-                # Extract text after operation word, before "task" or end
+                # Handle "delete the task [full title]" or "update the task [full title]" pattern
+                # Capture everything after "the task" until end of message or next operation keyword
                 match = re.search(
-                    rf'{op}\s+(.+?)(?:\s+task|\s+to\s+|\s+title\s+to\s+|$)',
-                    message_lower
+                    rf'{op}\s+the\s+task\s+(.+?)(?=\s+(?:to\s+(?:update|set|change)|title\s+to|priority\s+to|deadline|description|update|delete|complete|mark|$))',
+                    message_lower,
+                    re.IGNORECASE | re.DOTALL
                 )
                 if match:
                     title = match.group(1).strip()
-                    # Remove common stop words
-                    title = re.sub(r'^(the|a|an)\s+', '', title, flags=re.IGNORECASE)
-                    # Remove trailing update keywords
-                    title = re.sub(r'\s+(to|with|and|title|priority|deadline|description)\s.*', '', title, flags=re.IGNORECASE)
-                    if title and len(title) > 2 and not title.isdigit():  # Valid title, not a number
+                    # Remove "the" if it's the only word or at the start
+                    if title.lower().startswith('the '):
+                        title = title[4:].strip()
+                    # Don't return if title is just "the"
+                    if title and len(title) > 2 and title.lower() != 'the' and not title.isdigit():
                         return title
+                
+                # Handle "update [title]" pattern (without "task" word) - but only if "task" not mentioned
+                if 'task' not in message_lower:
+                    match = re.search(
+                        rf'{op}\s+(.+?)(?=\s+(?:to\s+(?:update|set|change)|title\s+to|priority\s+to|deadline|description|update|delete|complete|mark|$))',
+                        message_lower,
+                        re.IGNORECASE | re.DOTALL
+                    )
+                    if match:
+                        title = match.group(1).strip()
+                        # Remove common stop words
+                        title = re.sub(r'^(the|a|an)\s+', '', title, flags=re.IGNORECASE)
+                        # Remove trailing update keywords
+                        title = re.sub(r'\s+(to|with|and|title|priority|deadline|description|update|delete|complete|mark)\s+.*$', '', title, flags=re.IGNORECASE)
+                        if title and len(title) > 2 and not title.isdigit() and title.lower() != 'the':
+                            return title
 
         return None
 
@@ -329,6 +373,32 @@ class IntentDetector:
 
         return None
 
+    def _get_context_task_title(self, conversation_history: List[Dict[str, str]]) -> Optional[str]:
+        """Get task title from recent conversation context.
+
+        Looks at recent messages for task title mentions.
+        """
+        if not conversation_history:
+            return None
+
+        # Check last few messages for task title
+        for msg in reversed(conversation_history[-6:]):
+            content = msg.get('content', '').lower()
+            # Pattern: "task 'title'" or "task \"title\""
+            match = re.search(r"task\s+['\"](.+?)['\"]", content)
+            if match:
+                title = match.group(1).strip()
+                if title and len(title) > 2:
+                    return title
+            # Pattern: "update the task: title" or "task: title"
+            match = re.search(r'(?:update|delete|complete).*?task:?\s+(.+?)(?:\s+update|\s+delete|\s+complete|$)', content)
+            if match:
+                title = match.group(1).strip()
+                if title and len(title) > 2 and title.lower() != 'the':
+                    return title
+
+        return None
+
 
     def _detect_update_intent(
         self,
@@ -342,9 +412,58 @@ class IntentDetector:
         task_id = self._extract_task_id(message)
         task_title = self._extract_task_title(message, message_lower) if not task_id else None
 
-        # If neither found, check conversation context
+        # If neither found, check conversation context for recently mentioned task
         if not task_id and not task_title:
             task_id = self._get_context_task_id(conversation_history)
+            # Also try to get task title from context
+            if not task_id:
+                task_title = self._get_context_task_title(conversation_history)
+
+        # If still not found but user is providing update details (like "update the title: X"),
+        # this might be a follow-up to a previous update request - check conversation context
+        if not task_id and not task_title:
+            # Check recent conversation for task mentions in both user and assistant messages
+            for msg in reversed(conversation_history[-10:]):
+                content = msg.get('content', '').lower()
+                role = msg.get('role', '')
+                
+                # Pattern 1: "update the task: [title]" or "i want to update the task: [title]"
+                task_match = re.search(r'(?:update|want\s+to\s+update|updateing)\s+(?:the\s+)?task:?\s+(.+?)(?:\s+update|\s+title|\s+priority|\s+deadline|$)', content, re.IGNORECASE | re.DOTALL)
+                if task_match:
+                    potential_title = task_match.group(1).strip()
+                    # Remove "the" prefix
+                    potential_title = re.sub(r'^(the|a|an)\s+', '', potential_title, flags=re.IGNORECASE)
+                    if potential_title and len(potential_title) > 2 and potential_title.lower() != 'the':
+                        task_title = potential_title
+                        logger.info(f"Found task title from context: '{task_title}'")
+                        break
+                
+                # Pattern 2: "task 'title'" or "task \"title\"" in assistant message
+                if role == 'assistant':
+                    task_match = re.search(r"task\s+['\"](.+?)['\"]|task\s+#?(\d+)", content)
+                    if task_match:
+                        if task_match.group(1):  # Title found
+                            task_title = task_match.group(1).strip()
+                            logger.info(f"Found task title from assistant context: '{task_title}'")
+                            break
+                        elif task_match.group(2):  # ID found
+                            try:
+                                task_id = int(task_match.group(2))
+                                logger.info(f"Found task ID from assistant context: {task_id}")
+                                break
+                            except:
+                                pass
+                
+                # Pattern 3: Look for task mentions in assistant's confirmation messages
+                # "Task 'go to saturday class' mein kya update karna hai?"
+                if role == 'assistant':
+                    task_match = re.search(r"task\s+['\"](.+?)['\"]", content)
+                    if task_match:
+                        potential_title = task_match.group(1).strip()
+                        if potential_title and len(potential_title) > 2:
+                            task_title = potential_title
+                            logger.info(f"Found task title from assistant confirmation: '{task_title}'")
+                            break
 
         # If still not found, this is likely first turn asking what to update
         if not task_id and not task_title:
@@ -357,12 +476,12 @@ class IntentDetector:
         # This is CRITICAL: Detect if user is giving all details at once
         has_update_details = any([
             'change' in message_lower and 'to' in message_lower,
-            'update' in message_lower and 'to' in message_lower,
+            'update' in message_lower and ('to' in message_lower or ':' in message_lower),
             'set' in message_lower and ('to' in message_lower or 'as' in message_lower),
             'priority' in message_lower,
             'deadline' in message_lower or 'due date' in message_lower or 'due_date' in message_lower,
             'description' in message_lower,
-            'title' in message_lower and 'to' in message_lower,
+            ('title' in message_lower and ('to' in message_lower or ':' in message_lower)),
             'remove' in message_lower and ('deadline' in message_lower or 'due date' in message_lower),
         ])
 
@@ -379,18 +498,19 @@ class IntentDetector:
         # User is providing update details - extract them!
 
         # Extract new title
-        # Patterns: "change title to X", "update title to X", "set title to X"
+        # Patterns: "change title to X", "update title to X", "set title to X", "update the title: X"
         title_patterns = [
-            r'(?:change|update|set)\s+(?:the\s+)?title\s+to\s+(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
+            r'(?:change|update|set)\s+(?:the\s+)?title\s*(?:to|:)\s*(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
             r'(?:change|update)\s+(?:it\s+to|to)\s+(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
-            r'title\s+(?:to|as)\s+(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
+            r'title\s*(?:to|:)\s*(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
+            r'update\s+the\s+title:?\s*(.+?)(?:,|\s+with|\s+and|$|priority|deadline|description)',
         ]
         for pattern in title_patterns:
             title_match = re.search(pattern, message_lower)
             if title_match:
                 title = title_match.group(1).strip()
-                # Clean up title
-                title = re.sub(r'\s+(priority|deadline|description|and|with).*', '', title, flags=re.IGNORECASE)
+                # Clean up title - remove trailing keywords
+                title = re.sub(r'\s+(priority|deadline|description|and|with|update|delete|complete|mark).*$', '', title, flags=re.IGNORECASE)
                 if title and len(title) > 1:
                     params['title'] = title
                     break
