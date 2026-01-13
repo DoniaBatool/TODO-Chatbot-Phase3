@@ -162,7 +162,7 @@ export default function ChatPage() {
                     <div className="text-center text-gray-500 dark:text-gray-400">
                       <p className="text-lg mb-2">👋 Welcome!</p>
                       <p className="text-sm">Start a conversation to manage your tasks with AI</p>
-                      <p className="text-xs mt-2">Try: "Add a task to buy groceries" or "Show my tasks"</p>
+                      <p className="text-xs mt-2">Try: &quot;Add a task to buy groceries&quot; or &quot;Show my tasks&quot;</p>
                     </div>
                   </div>
                 ) : (
