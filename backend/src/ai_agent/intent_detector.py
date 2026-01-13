@@ -494,25 +494,40 @@ class IntentDetector:
         task_id = self._extract_task_id(message)
         task_title = self._extract_task_title(message, message_lower) if not task_id else None
 
-        # Enhanced title extraction for complete/incomplete patterns
-        # "mark buy milk as complete" or "complete grocery task"
+        # Enhanced title extraction for complete patterns
+        # Patterns: "mark buy milk as complete", "complete grocery task", "mark the grocery task as done"
         if not task_id and not task_title:
-            # Pattern: "mark [title] as complete"
+            # Pattern 1: "mark [title] as complete/done"
             title_match = re.search(
-                r'mark\s+(.+?)\s+as\s+(?:complete|done)',
+                r'mark\s+(?:the\s+)?(.+?)\s+as\s+(?:complete|done)',
                 message_lower
             )
             if title_match:
                 title = title_match.group(1).strip()
                 # Remove "task" if present
                 title = re.sub(r'\s+task\s*$', '', title, flags=re.IGNORECASE)
+                # Remove common words
+                title = re.sub(r'^(the|a|an)\s+', '', title, flags=re.IGNORECASE)
                 if title and len(title) > 2 and not title.isdigit():
                     task_title = title
 
-        # Pattern: "complete [title] task"
+        # Pattern 2: "complete [title] task" or "complete [title]"
         if not task_id and not task_title:
             title_match = re.search(
-                r'complete\s+(.+?)(?:\s+task|$)',
+                r'complete\s+(?:the\s+)?(.+?)(?:\s+task|$)',
+                message_lower
+            )
+            if title_match:
+                title = title_match.group(1).strip()
+                # Remove trailing words
+                title = re.sub(r'\s+(task|as|complete|done).*', '', title, flags=re.IGNORECASE)
+                if title and len(title) > 2 and not title.isdigit():
+                    task_title = title
+
+        # Pattern 3: "mark task [title] as complete"
+        if not task_id and not task_title:
+            title_match = re.search(
+                r'mark\s+task\s+(.+?)\s+as\s+(?:complete|done)',
                 message_lower
             )
             if title_match:
@@ -551,17 +566,32 @@ class IntentDetector:
         task_title = self._extract_task_title(message, message_lower) if not task_id else None
 
         # Enhanced title extraction for incomplete patterns
-        # "mark buy milk as incomplete" or "unmark grocery task"
+        # Patterns: "mark buy milk as incomplete", "mark grocery task as pending", "mark task buy milk as incomplete"
         if not task_id and not task_title:
-            # Pattern: "mark [title] as incomplete"
+            # Pattern 1: "mark [title] as incomplete/pending/not done"
             title_match = re.search(
-                r'mark\s+(.+?)\s+as\s+(?:incomplete|not\s+done|pending|undone)',
+                r'mark\s+(?:the\s+)?(.+?)\s+as\s+(?:incomplete|pending|not\s+done|undone)',
                 message_lower
             )
             if title_match:
                 title = title_match.group(1).strip()
                 # Remove "task" if present
                 title = re.sub(r'\s+task\s*$', '', title, flags=re.IGNORECASE)
+                # Remove common words
+                title = re.sub(r'^(the|a|an)\s+', '', title, flags=re.IGNORECASE)
+                if title and len(title) > 2 and not title.isdigit():
+                    task_title = title
+
+        # Pattern 2: "mark task [title] as incomplete"
+        if not task_id and not task_title:
+            title_match = re.search(
+                r'mark\s+task\s+(.+?)\s+as\s+(?:incomplete|pending|not\s+done|undone)',
+                message_lower
+            )
+            if title_match:
+                title = title_match.group(1).strip()
+                if title and len(title) > 2 and not title.isdigit():
+                    task_title = title
                 if title and len(title) > 2 and not title.isdigit():
                     task_title = title
 

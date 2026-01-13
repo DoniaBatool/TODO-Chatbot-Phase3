@@ -243,7 +243,7 @@ export default function ChatPage() {
           <div className="p-4 border-b border-theme">
             <button
               onClick={startNewChat}
-              className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 justify-center shadow-sm"
+              className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2 justify-center shadow-sm"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -264,9 +264,29 @@ export default function ChatPage() {
                     onClick={() => loadConversation(userId, conv.id)}
                     className={`w-full text-left px-3 py-2 rounded-lg transition-colors border ${
                       conversationId === conv.id
-                        ? 'bg-blue-500/20 dark:bg-blue-500/30 text-blue-600 dark:text-blue-400 border-blue-500/40 dark:border-blue-500/50'
-                        : 'hover:bg-theme-card dark:hover:bg-theme-card/50 text-theme-secondary border-transparent hover:border-theme'
+                        ? 'bg-blue-500/20 text-blue-600 border-blue-500/40'
+                        : 'hover:bg-theme-card text-theme-secondary border-transparent hover:border-theme'
                     }`}
+                    style={{
+                      backgroundColor: conversationId === conv.id 
+                        ? 'rgba(59, 130, 246, 0.2)' 
+                        : 'transparent',
+                      borderColor: conversationId === conv.id 
+                        ? 'rgba(59, 130, 246, 0.4)' 
+                        : 'transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (conversationId !== conv.id) {
+                        e.currentTarget.style.backgroundColor = 'var(--bg-card)';
+                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (conversationId !== conv.id) {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.borderColor = 'transparent';
+                      }
+                    }}
                   >
                     <div className="text-sm font-medium truncate text-theme-primary">
                       {conv.title || `Chat ${conv.id}`}
@@ -287,7 +307,13 @@ export default function ChatPage() {
           <div className="border-b border-theme bg-theme-surface p-4 flex items-center justify-between">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-theme-card dark:hover:bg-theme-card/50 rounded-lg transition-colors text-theme-secondary hover:text-theme-primary"
+              className="p-2 hover:bg-theme-card rounded-lg transition-colors text-theme-secondary hover:text-theme-primary"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-card)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
