@@ -937,6 +937,7 @@ async def chat(
         # Execute tool calls if any
         # PRIORITY: Forced tool calls execute FIRST, then AI-suggested tools
         executed_tools = []
+        tool_errors = []
         seen_tool_calls = set()  # Track tool call signatures for deduplication
 
         # STEP 1: Execute FORCED tool calls (from intent detector)
@@ -1009,7 +1010,8 @@ async def chat(
                                         'title': task['title'],
                                         'description': task['description'],
                                         'priority': task['priority'],
-                                        'due_date': task['due_date'].isoformat() if task.get('due_date') else None,
+                                        # list_tasks tool already returns due_date as ISO string (or None)
+                                        'due_date': task.get('due_date'),
                                         'completed': task['completed'],
                                         'created_at': task['created_at'].isoformat()
                                     }
@@ -1020,6 +1022,12 @@ async def chat(
                         })
                     except Exception as e:
                         logger.error(f"Tool execution failed: {e}", exc_info=True)
+                        tool_errors.append({"tool": "list_tasks", "error": str(e)})
+                        executed_tools.append({
+                            'tool': 'list_tasks',
+                            'params': tool_params,
+                            'result': {'error': str(e)}
+                        })
                         # Continue even if tool fails
 
                 elif tool_name == 'complete_task':
@@ -1045,6 +1053,12 @@ async def chat(
                         })
                     except Exception as e:
                         logger.error(f"Tool execution failed: {e}", exc_info=True)
+                        tool_errors.append({"tool": "complete_task", "error": str(e)})
+                        executed_tools.append({
+                            'tool': 'complete_task',
+                            'params': tool_params,
+                            'result': {'error': str(e)}
+                        })
                         # Continue even if tool fails
 
                 elif tool_name == 'update_task':
@@ -1059,24 +1073,34 @@ async def chat(
                             }
                         )
 
-                        # Parse due_date if provided
-                        due_date = None
-                        due_date_str = tool_params.get('due_date')
-                        if due_date_str:
-                            try:
-                                due_date = datetime.fromisoformat(due_date_str)
-                            except (ValueError, TypeError):
-                                logger.warning(f"Invalid due_date format: {due_date_str}")
+                        # IMPORTANT: Only pass fields that were actually provided.
+                        # Passing title=None/priority=None explicitly can overwrite existing values.
+                        update_kwargs = {
+                            "user_id": user_id,
+                            "task_id": tool_params.get("task_id"),
+                        }
 
-                        params = UpdateTaskParams(
-                            user_id=user_id,
-                            task_id=tool_params.get('task_id'),
-                            title=tool_params.get('title'),
-                            description=tool_params.get('description'),
-                            priority=tool_params.get('priority'),
-                            due_date=due_date,
-                            completed=tool_params.get('completed')
-                        )
+                        if "title" in tool_params:
+                            update_kwargs["title"] = tool_params.get("title")
+                        if "description" in tool_params:
+                            update_kwargs["description"] = tool_params.get("description")
+                        if "priority" in tool_params:
+                            update_kwargs["priority"] = tool_params.get("priority")
+                        if "completed" in tool_params:
+                            update_kwargs["completed"] = tool_params.get("completed")
+
+                        # due_date can be missing (no change), null (remove), or ISO string (set)
+                        if "due_date" in tool_params:
+                            due_date_str = tool_params.get("due_date")
+                            if due_date_str is None:
+                                update_kwargs["due_date"] = None
+                            elif isinstance(due_date_str, str) and due_date_str.strip():
+                                try:
+                                    update_kwargs["due_date"] = datetime.fromisoformat(due_date_str)
+                                except (ValueError, TypeError):
+                                    raise ValueError(f"Invalid due_date format: {due_date_str}")
+
+                        params = UpdateTaskParams(**update_kwargs)
                         result = update_task(db, params)
 
                         logger.info(
@@ -1112,6 +1136,12 @@ async def chat(
                             },
                             exc_info=True
                         )
+                        tool_errors.append({"tool": "update_task", "error": str(e)})
+                        executed_tools.append({
+                            'tool': 'update_task',
+                            'params': tool_params,
+                            'result': {'error': str(e)}
+                        })
                         # Continue even if tool fails
 
                 elif tool_name == 'delete_task':
@@ -1159,6 +1189,12 @@ async def chat(
                             },
                             exc_info=True
                         )
+                        tool_errors.append({"tool": "delete_task", "error": str(e)})
+                        executed_tools.append({
+                            'tool': 'delete_task',
+                            'params': tool_params,
+                            'result': {'error': str(e)}
+                        })
                         # Continue even if tool fails
 
                 elif tool_name == 'set_task_deadline':
@@ -1257,6 +1293,12 @@ async def chat(
 
                     except Exception as e:
                         logger.error(f"Tool execution failed: {e}", exc_info=True)
+                        tool_errors.append({"tool": "find_task", "error": str(e)})
+                        executed_tools.append({
+                            'tool': 'find_task',
+                            'params': tool_params,
+                            'result': {'error': str(e)}
+                        })
                         # Continue even if tool fails
 
         # Store user message in database (T066)
@@ -1267,21 +1309,18 @@ async def chat(
             content=request.message
         )
 
-        # Store assistant response in database (T066) with tool_calls
-        conversation_service.add_message(
-            conversation_id=conversation_id,
-            user_id=user_id,
-            role="assistant",
-            content=agent_response.response,
-            tool_calls=executed_tools if executed_tools else None
-        )
-
-        # Update conversation timestamp (T067)
-        conversation_service.update_conversation_timestamp(conversation_id)
-
         # Return response (T068)
         # Enhance response for list_tasks tool with actual task data
         final_response = agent_response.response
+        if tool_errors:
+            # Never claim success if a tool failed
+            lines = ["⚠️ I couldn't complete your request due to an error:"]
+            for err in tool_errors[:3]:
+                lines.append(f"- {err.get('tool')}: {err.get('error')}")
+            if len(tool_errors) > 3:
+                lines.append(f"- ...and {len(tool_errors) - 3} more")
+            final_response = "\n".join(lines)
+
         if executed_tools:
             for tool_call in executed_tools:
                 if tool_call.get('tool') == 'list_tasks' and tool_call.get('result'):
@@ -1307,6 +1346,19 @@ async def chat(
                             formatted_tasks.append(task_dict)
                         
                         final_response = format_task_list_response(formatted_tasks)
+
+        # Store assistant response in database (T066) with tool_calls
+        # IMPORTANT: store the computed final_response (frontend reloads from DB)
+        conversation_service.add_message(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            role="assistant",
+            content=final_response,
+            tool_calls=executed_tools if executed_tools else None
+        )
+
+        # Update conversation timestamp (T067)
+        conversation_service.update_conversation_timestamp(conversation_id)
 
         return ChatResponse(
             conversation_id=conversation_id,
