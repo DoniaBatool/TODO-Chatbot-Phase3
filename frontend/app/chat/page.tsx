@@ -29,17 +29,15 @@ export default function ChatPage() {
   const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/chatkit`;
   
   // Domain key for production (required for hosted ChatKit)
-  const domainKeyValue = process.env.NEXT_PUBLIC_OPENAI_DOMAIN_KEY;
+  // Use empty string fallback so TypeScript sees a guaranteed string
+  const domainKey = process.env.NEXT_PUBLIC_OPENAI_DOMAIN_KEY ?? '';
 
-  // Build API config - conditionally include domainKey only if it exists
-  const apiConfig: {
-    url: string;
-    domainKey?: string;
-    fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-  } = {
+  // Build API config. Domain key is always a string (may be empty in dev).
+  const apiConfig = {
     url: apiUrl,
+    domainKey,
     // Custom fetch function to inject JWT token in headers
-    fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+    fetch: async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const token = getToken();
       
       // Add authentication header
@@ -56,11 +54,6 @@ export default function ChatPage() {
       });
     },
   };
-
-  // Only add domainKey if it exists (required for production)
-  if (domainKeyValue) {
-    apiConfig.domainKey = domainKeyValue;
-  }
 
   const { control } = useChatKit({
     api: apiConfig,
