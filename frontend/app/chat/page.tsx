@@ -27,6 +27,9 @@ export default function ChatPage() {
 
   // Build API URL for ChatKit adapter endpoint
   const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/chatkit`;
+  
+  // Domain key for production (required for hosted ChatKit)
+  const domainKeyValue = process.env.NEXT_PUBLIC_OPENAI_DOMAIN_KEY;
 
   const { control } = useChatKit({
     api: {
@@ -35,7 +38,7 @@ export default function ChatPage() {
       url: apiUrl,
       
       // Domain key for production (required for hosted ChatKit)
-      domainKey: process.env.NEXT_PUBLIC_OPENAI_DOMAIN_KEY || undefined,
+      ...(domainKeyValue && { domainKey: domainKeyValue }),
       
       // Custom fetch function to inject JWT token in headers
       fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
