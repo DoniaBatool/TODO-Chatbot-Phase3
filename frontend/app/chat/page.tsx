@@ -31,33 +31,39 @@ export default function ChatPage() {
   // Domain key for production (required for hosted ChatKit)
   const domainKeyValue = process.env.NEXT_PUBLIC_OPENAI_DOMAIN_KEY;
 
-  const { control } = useChatKit({
-    api: {
-      // Backend endpoint URL - ChatKit will send all requests here
-      // Use ChatKit adapter endpoint that converts ChatKit protocol to our format
-      url: apiUrl,
+  // Build API config - conditionally include domainKey only if it exists
+  const apiConfig: {
+    url: string;
+    domainKey?: string;
+    fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+  } = {
+    url: apiUrl,
+    // Custom fetch function to inject JWT token in headers
+    fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+      const token = getToken();
       
-      // Domain key for production (required for hosted ChatKit)
-      ...(domainKeyValue && { domainKey: domainKeyValue }),
-      
-      // Custom fetch function to inject JWT token in headers
-      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
-        const token = getToken();
-        
-        // Add authentication header
-        const headers = {
-          ...init?.headers,
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        };
+      // Add authentication header
+      const headers = {
+        ...init?.headers,
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      };
 
-        return fetch(input, {
-          ...init,
-          headers,
-          credentials: 'include',
-        });
-      },
+      return fetch(input, {
+        ...init,
+        headers,
+        credentials: 'include',
+      });
     },
+  };
+
+  // Only add domainKey if it exists (required for production)
+  if (domainKeyValue) {
+    apiConfig.domainKey = domainKeyValue;
+  }
+
+  const { control } = useChatKit({
+    api: apiConfig,
   });
 
   if (!isAuthenticated || !userId) {
