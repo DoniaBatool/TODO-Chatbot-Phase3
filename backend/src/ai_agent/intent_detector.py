@@ -553,19 +553,18 @@ class IntentDetector:
                                     task_id = int(task_match.group(2))
                                     logger.info(f"Found task ID from assistant context: {task_id}")
                                     break
-                            except:
-                                pass
-                
-                # Pattern 3: Look for task mentions in assistant's confirmation messages
-                # "Task 'go to saturday class' mein kya update karna hai?"
-                if role == 'assistant':
-                    task_match = re.search(r"task\s+['\"](.+?)['\"]", content)
-                    if task_match:
-                        potential_title = task_match.group(1).strip()
-                        if potential_title and len(potential_title) > 2:
-                            task_title = potential_title
-                            logger.info(f"Found task title from assistant confirmation: '{task_title}'")
-                            break
+                                except ValueError:
+                                    pass
+                        
+                        # Pattern 3: Look for task mentions in assistant's confirmation messages
+                        # "Task 'go to saturday class' mein kya update karna hai?"
+                        task_match = re.search(r"task\s+['\"](.+?)['\"]", content)
+                        if task_match:
+                            potential_title = task_match.group(1).strip()
+                            if potential_title and len(potential_title) > 2:
+                                task_title = potential_title
+                                logger.info(f"Found task title from assistant confirmation: '{task_title}'")
+                                break
 
         # If still not found, this is likely first turn asking what to update
         if not task_id and not task_title:
