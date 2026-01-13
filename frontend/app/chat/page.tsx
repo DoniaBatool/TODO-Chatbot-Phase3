@@ -294,7 +294,12 @@ export default function ChatPage() {
                     onChange={(e) => setInputMessage(e.target.value)}
                     placeholder="Type your message... (e.g., 'Update task 1 title to Buy groceries')"
                     disabled={isLoading}
-                    className="flex-1 px-4 py-3 rounded-xl border border-theme bg-theme-background text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="flex-1 px-4 py-3 rounded-xl border border-theme bg-theme-card text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    style={{
+                      backgroundColor: 'var(--bg-card)',
+                      color: 'var(--text-primary)',
+                      borderColor: 'var(--border-color)',
+                    }}
                   />
                   <button
                     type="submit"

@@ -48,6 +48,9 @@ export function TaskItem({ task, onComplete, onEdit, onDelete }: Props) {
     <div className="task-item flex items-start justify-between gap-3 rounded-md p-4">
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
+          <span className="text-sm font-mono font-semibold text-theme-tertiary">
+            #{task.id}
+          </span>
           <span
             className={clsx('task-title text-lg font-semibold', task.completed && 'line-through completed')}
           >

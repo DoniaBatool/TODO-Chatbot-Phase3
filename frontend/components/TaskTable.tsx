@@ -58,6 +58,9 @@ export function TaskTable({ tasks, onComplete, onEdit, onDelete }: Props) {
         <thead className="bg-theme-surface">
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
+              ID
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
               Task
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
@@ -86,6 +89,11 @@ export function TaskTable({ tasks, onComplete, onEdit, onDelete }: Props) {
                 task.completed && 'opacity-60'
               )}
             >
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span className="text-sm font-mono font-semibold text-theme-primary">
+                  #{task.id}
+                </span>
+              </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex flex-col">
                   <span
