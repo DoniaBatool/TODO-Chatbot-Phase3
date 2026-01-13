@@ -10,6 +10,7 @@
     "format": "next lint"
   },
   "dependencies": {
+    "@openai/chatkit-react": "^1.4.1",
     "clsx": "2.1.1",
     "lucide-react": "^0.562.0",
     "next": "15.1.11",

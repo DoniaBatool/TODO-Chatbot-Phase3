@@ -239,6 +239,9 @@ async def run_agent(
                             f"{enhanced_params.pop('_validation_warning')}"
                         )
 
+                    # CRITICAL: Inject user_id into tool params (AI doesn't know user_id)
+                    enhanced_params['user_id'] = user_id
+                    
                     tool_calls_data.append({
                         "tool": tool_name,
                         "params": enhanced_params

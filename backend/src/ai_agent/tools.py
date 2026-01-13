@@ -90,7 +90,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
                             )
                         }
                     },
-                    "required": ["user_id", "title"]
+                    "required": ["title"]
                 }
             }
         },
@@ -126,7 +126,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
                             )
                         }
                     },
-                    "required": ["user_id"]
+                    "required": []
                 }
             }
         },
@@ -158,7 +158,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
                             )
                         }
                     },
-                    "required": ["user_id", "task_id"]
+                    "required": ["task_id"]
                 }
             }
         },
@@ -222,7 +222,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
                             )
                         }
                     },
-                    "required": ["user_id", "task_id"]
+                    "required": ["task_id"]
                 }
             }
         },
@@ -253,7 +253,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
                             )
                         }
                     },
-                    "required": ["user_id", "task_id"]
+                    "required": ["task_id"]
                 }
             }
         },
@@ -281,7 +281,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
                             "description": "Task title to search for (case-insensitive partial match)"
                         }
                     },
-                    "required": ["user_id", "title"]
+                    "required": ["title"]
                 }
             }
         },
@@ -319,7 +319,7 @@ def get_tool_definitions() -> List[Dict[str, Any]]:
                             )
                         }
                     },
-                    "required": ["user_id", "task_id"]
+                    "required": ["task_id"]
                 }
             }
         }

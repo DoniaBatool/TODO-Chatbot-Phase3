@@ -31,7 +31,7 @@ app.add_middleware(
 setup_error_handlers(app)
 
 # Register routes
-from src.routes import auth, health, tasks, chat, conversations, voice
+from src.routes import auth, health, tasks, chat, conversations, voice, chatkit, chatkit_adapter
 
 app.include_router(health.router)
 app.include_router(auth.router, prefix=settings.api_v1_prefix)
@@ -39,6 +39,8 @@ app.include_router(tasks.router, prefix=settings.api_v1_prefix)
 app.include_router(chat.router, prefix=settings.api_v1_prefix)
 app.include_router(conversations.router)
 app.include_router(voice.router)
+app.include_router(chatkit.router, prefix=settings.api_v1_prefix)
+app.include_router(chatkit_adapter.router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/")
