@@ -399,7 +399,7 @@ export default function ChatPage() {
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top Bar */}
-          <div className="border-b border-theme bg-theme-surface p-4 flex items-center justify-between">
+          <div className="border-b border-theme bg-theme-surface/80 backdrop-blur px-3 sm:px-4 py-3 flex items-center justify-between">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-2 hover:bg-theme-card rounded-lg transition-colors text-theme-secondary hover:text-theme-primary"
@@ -414,16 +414,17 @@ export default function ChatPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h1 className="text-lg font-semibold text-theme-primary">AI Chat Assistant</h1>
+            <h1 className="text-base sm:text-lg font-semibold text-theme-primary">AI Chat Assistant</h1>
             <div className="w-9"></div>
           </div>
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6">
+            <div className="mx-auto w-full max-w-4xl space-y-4">
             {messages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center text-theme-secondary max-w-2xl">
-                  <p className="text-2xl mb-4">👋 Welcome!</p>
+                  <p className="text-2xl sm:text-3xl mb-3">👋 Welcome!</p>
                   <p className="text-base mb-2">Start a conversation to manage your tasks with AI</p>
                   <p className="text-sm mt-4 text-theme-tertiary">Try: &quot;Add a task to buy groceries&quot; or &quot;Show my tasks&quot;</p>
                 </div>
@@ -435,9 +436,9 @@ export default function ChatPage() {
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                    className={`max-w-[88%] sm:max-w-[75%] lg:max-w-[60%] rounded-2xl px-4 py-3 shadow-sm border border-theme/60 ${
                       message.role === 'user'
-                        ? 'bg-blue-500 text-white'
+                        ? 'bg-gradient-to-br from-blue-500 to-indigo-500 text-white border-transparent'
                         : 'bg-theme-surface text-theme-primary'
                     }`}
                   >
@@ -471,7 +472,7 @@ export default function ChatPage() {
                       </div>
                     )}
                     <p className={`text-xs mt-2 ${message.role === 'user' ? 'text-blue-100' : 'text-theme-tertiary'}`}>
-                      {message.timestamp.toLocaleTimeString()}
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 </div>
@@ -503,18 +504,19 @@ export default function ChatPage() {
               </div>
             )}
             <div ref={messagesEndRef} />
+            </div>
           </div>
 
           {/* Input Area */}
-          <div className="border-t border-theme p-4 bg-theme-surface">
-            <form onSubmit={handleSendMessage} className="flex gap-2">
+          <div className="border-t border-theme bg-theme-surface/90 backdrop-blur px-3 sm:px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
+            <form onSubmit={handleSendMessage} className="mx-auto w-full max-w-4xl flex gap-2">
               <input
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 placeholder="Type your message... (e.g., 'Update task 1 title to Buy groceries')"
                 disabled={isLoading}
-                className="flex-1 px-4 py-3 rounded-xl border border-theme bg-theme-card text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="flex-1 px-4 py-3 rounded-2xl border border-theme bg-theme-card text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 style={{
                   backgroundColor: 'var(--bg-card)',
                   color: 'var(--text-primary)',

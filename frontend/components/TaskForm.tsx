@@ -78,7 +78,7 @@ export function TaskForm({ onSubmit, initialTask = null, loading = false }: Prop
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <Input
         label="Title"
         value={title}
@@ -90,7 +90,7 @@ export function TaskForm({ onSubmit, initialTask = null, loading = false }: Prop
       <label className="flex flex-col gap-1 text-sm text-theme-secondary">
         <span className="text-theme-primary">Description</span>
         <textarea
-          className="task-textarea rounded-md px-3 py-2"
+          className="task-textarea rounded-xl px-3 py-2 min-h-[96px]"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Optional description"
@@ -101,7 +101,7 @@ export function TaskForm({ onSubmit, initialTask = null, loading = false }: Prop
       <label className="flex flex-col gap-1 text-sm text-theme-secondary">
         <span className="text-theme-primary">Priority</span>
         <select
-          className="input-theme w-full rounded-md border px-3 py-2 transition-all duration-200"
+          className="input-theme w-full rounded-xl border px-3 py-2 transition-all duration-200"
           value={priority}
           onChange={(e) => setPriority(e.target.value)}
         >
@@ -114,13 +114,13 @@ export function TaskForm({ onSubmit, initialTask = null, loading = false }: Prop
         <span className="text-theme-primary">Due Date & Time (Optional)</span>
         <input
           type="datetime-local"
-          className="input-theme w-full rounded-md border px-3 py-2 transition-all duration-200"
+          className="input-theme w-full rounded-xl border px-3 py-2 transition-all duration-200"
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
         />
       </label>
       {error ? <Alert variant="error">{error}</Alert> : null}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <Button type="submit" disabled={loading}>
           {initialTask ? 'Update Task' : 'Create Task'}
         </Button>

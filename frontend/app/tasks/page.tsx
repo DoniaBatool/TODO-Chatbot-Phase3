@@ -144,10 +144,10 @@ export default function TasksPage() {
   return (
     <>
       <Header />
-      <div className="min-h-screen px-4 py-8">
-        <div className="mx-auto flex max-w-5xl flex-col gap-6">
+      <div className="min-h-screen px-3 sm:px-4 py-6 sm:py-8">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 sm:gap-6">
           <div>
-            <h1 className="text-3xl font-bold text-theme-primary">Your Tasks</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-theme-primary">Your Tasks</h1>
             <p className="text-sm text-theme-secondary">Manage your todos securely.</p>
           </div>
 
@@ -172,28 +172,30 @@ export default function TasksPage() {
         <Card className="space-y-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-semibold text-theme-primary">Task list</h2>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
               <span className="text-sm text-theme-secondary">View:</span>
-              <button
-                onClick={() => setViewMode('table')}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                  viewMode === 'table'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-theme-surface text-theme-secondary hover:bg-theme-border'
-                }`}
-              >
-                Table
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                  viewMode === 'list'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-theme-surface text-theme-secondary hover:bg-theme-border'
-                }`}
-              >
-                List
-              </button>
+              <div className="inline-flex rounded-xl border border-theme bg-theme-surface p-1">
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    viewMode === 'table'
+                      ? 'bg-blue-500 text-white'
+                      : 'text-theme-secondary hover:text-theme-primary'
+                  }`}
+                >
+                  Table
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    viewMode === 'list'
+                      ? 'bg-blue-500 text-white'
+                      : 'text-theme-secondary hover:text-theme-primary'
+                  }`}
+                >
+                  List
+                </button>
+              </div>
             </div>
             {loading ? <span className="text-sm text-theme-tertiary">Loading...</span> : null}
           </div>

@@ -53,29 +53,29 @@ export function TaskTable({ tasks, onComplete, onEdit, onDelete }: Props) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-theme-border">
-        <thead className="bg-theme-surface">
+    <div className="overflow-x-auto rounded-2xl border border-theme bg-theme-background">
+      <table className="min-w-[900px] w-full divide-y divide-theme-border">
+        <thead className="bg-theme-surface/80 backdrop-blur sticky top-0 z-10">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
+            <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
               ID
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
+            <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
               Task
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
+            <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
               Priority
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
+            <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
               Status
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
+            <th className="hidden md:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
               Due Date
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
+            <th className="hidden lg:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
               Created
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
+            <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-theme-secondary uppercase tracking-wider">
               Actions
             </th>
           </tr>
@@ -85,16 +85,16 @@ export function TaskTable({ tasks, onComplete, onEdit, onDelete }: Props) {
             <tr
               key={task.id}
               className={clsx(
-                'hover:bg-theme-surface transition-colors',
+                'hover:bg-theme-surface/60 transition-colors',
                 task.completed && 'opacity-60'
               )}
             >
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                 <span className="text-sm font-mono font-semibold text-theme-primary">
                   #{task.id}
                 </span>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-4 sm:px-6 py-4">
                 <div className="flex flex-col">
                   <span
                     className={clsx(
@@ -111,10 +111,10 @@ export function TaskTable({ tasks, onComplete, onEdit, onDelete }: Props) {
                   )}
                 </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                 <PriorityBadge priority={task.priority} />
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                 <span
                   className={clsx(
                     'inline-flex px-2 py-1 text-xs font-semibold rounded-full',
@@ -126,13 +126,14 @@ export function TaskTable({ tasks, onComplete, onEdit, onDelete }: Props) {
                   {task.completed ? 'Completed' : 'Pending'}
                 </span>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-theme-secondary">
-                {task.due_date ? formatDueDate(task.due_date) : 'No due date'}
+              <td className="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-theme-secondary">
+                {task.due_date ? formatDueDate(task.due_date) : '—'}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-theme-secondary text-sm">
-                {task.created_at ? new Date(task.created_at).toLocaleDateString() : 'No date'}
+              <td className="hidden lg:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-theme-secondary text-sm">
+                {task.created_at ? new Date(task.created_at).toLocaleDateString() : '—'}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+              <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <div className="flex justify-end gap-2 flex-wrap">
                 <Button
                   variant="secondary"
                   onClick={() => onComplete(task)}
@@ -154,6 +155,7 @@ export function TaskTable({ tasks, onComplete, onEdit, onDelete }: Props) {
                 >
                   Delete
                 </Button>
+                </div>
               </td>
             </tr>
           ))}

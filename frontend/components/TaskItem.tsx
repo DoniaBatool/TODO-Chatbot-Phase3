@@ -45,14 +45,18 @@ function formatDueDate(dueDateStr: string): string {
 
 export function TaskItem({ task, onComplete, onEdit, onDelete }: Props) {
   return (
-    <div className="task-item flex items-start justify-between gap-3 rounded-md p-4">
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
+    <div className="task-item rounded-2xl border border-theme bg-theme-surface/40 p-4 sm:p-5">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="flex flex-col gap-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-mono font-semibold text-theme-tertiary">
             #{task.id}
           </span>
           <span
-            className={clsx('task-title text-lg font-semibold', task.completed && 'line-through completed')}
+            className={clsx(
+              'task-title text-base sm:text-lg font-semibold truncate max-w-full',
+              task.completed && 'line-through completed'
+            )}
           >
             {task.title}
           </span>
@@ -62,7 +66,7 @@ export function TaskItem({ task, onComplete, onEdit, onDelete }: Props) {
           ) : null}
         </div>
         {task.description ? (
-          <p className="task-description text-sm">{task.description}</p>
+          <p className="task-description text-sm text-theme-secondary break-words">{task.description}</p>
         ) : null}
         {task.due_date ? (
           <div className="flex items-center gap-1 text-xs text-theme-secondary">
@@ -85,17 +89,23 @@ export function TaskItem({ task, onComplete, onEdit, onDelete }: Props) {
             <span>{formatDueDate(task.due_date)}</span>
           </div>
         ) : null}
-      </div>
-      <div className="flex gap-2">
-        <Button variant="secondary" onClick={() => onComplete(task)}>
-          {task.completed ? 'Mark Incomplete' : 'Complete'}
-        </Button>
-        <Button variant="ghost" onClick={() => onEdit(task)}>
-          Edit
-        </Button>
-        <Button variant="ghost" onClick={() => onDelete(task)}>
-          Delete
-        </Button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <Button variant="secondary" onClick={() => onComplete(task)} className="px-3 py-2">
+            {task.completed ? 'Mark Incomplete' : 'Complete'}
+          </Button>
+          <Button variant="ghost" onClick={() => onEdit(task)} className="px-3 py-2">
+            Edit
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => onDelete(task)}
+            className="px-3 py-2 text-red-400 hover:text-red-300"
+          >
+            Delete
+          </Button>
+        </div>
       </div>
     </div>
   );
