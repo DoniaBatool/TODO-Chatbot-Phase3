@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 
 from sqlmodel import Session, select
+from sqlalchemy import delete
 
 from ..models import Conversation, Message
 from ..utils.performance import log_execution_time
@@ -289,3 +290,48 @@ class ConversationService:
                 for msg in messages
             ]
         }
+
+    @log_execution_time("delete_conversation")
+    def delete_conversation(self, conversation_id: int, user_id: str) -> bool:
+        """Delete a single conversation (and its messages) for a user."""
+        conversation = self.get_conversation(conversation_id, user_id)
+        if not conversation:
+            return False
+
+        # Delete messages first (defensive), then conversation
+        try:
+            self.db.exec(
+                delete(Message).where(
+                    Message.conversation_id == conversation_id,
+                    Message.user_id == user_id
+                )
+            )
+            self.db.exec(
+                delete(Conversation).where(
+                    Conversation.id == conversation_id,
+                    Conversation.user_id == user_id
+                )
+            )
+            self.db.commit()
+            return True
+        except Exception:
+            self.db.rollback()
+            raise
+
+    @log_execution_time("delete_all_conversations")
+    def delete_all_conversations(self, user_id: str) -> int:
+        """Delete all conversations (and messages) for a user. Returns count deleted."""
+        # Fetch IDs first to return count
+        statement = select(Conversation.id).where(Conversation.user_id == user_id)
+        ids = [row for row in self.db.exec(statement).all()]
+        if not ids:
+            return 0
+
+        try:
+            self.db.exec(delete(Message).where(Message.user_id == user_id))
+            self.db.exec(delete(Conversation).where(Conversation.user_id == user_id))
+            self.db.commit()
+            return len(ids)
+        except Exception:
+            self.db.rollback()
+            raise

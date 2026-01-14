@@ -22,6 +22,10 @@ interface Conversation {
   message_count?: number;
 }
 
+type FolderState = {
+  open: boolean;
+};
+
 // Helper to get tool action description
 const getToolActionDescription = (tool: string, params: any, result: any): string => {
   switch (tool) {
@@ -76,6 +80,7 @@ export default function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [loadingConversations, setLoadingConversations] = useState(false);
+  const [folder, setFolder] = useState<FolderState>({ open: true });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -122,6 +127,43 @@ export default function ChatPage() {
       console.error('Failed to load conversations:', error);
     } finally {
       setLoadingConversations(false);
+    }
+  };
+
+  const deleteConversation = async (convId: number) => {
+    if (!userId) return;
+    const ok = confirm('Delete this chat? This cannot be undone.');
+    if (!ok) return;
+
+    try {
+      await apiFetch(`/api/conversations/${convId}`, { method: 'DELETE' });
+      // If we deleted the currently open conversation, reset view
+      if (conversationId === convId) {
+        setConversationId(null);
+        setMessages([]);
+      }
+      await loadConversations(userId);
+      // If nothing selected, load latest available
+      if (!conversationId || conversationId === convId) {
+        await loadLatestConversation(userId);
+      }
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+    }
+  };
+
+  const deleteAllConversations = async () => {
+    if (!userId) return;
+    const ok = confirm('Delete ALL chats? This will remove your full chat history.');
+    if (!ok) return;
+
+    try {
+      await apiFetch(`/api/conversations`, { method: 'DELETE' });
+      setConversationId(null);
+      setMessages([]);
+      await loadConversations(userId);
+    } catch (error) {
+      console.error('Failed to delete all conversations:', error);
     }
   };
 
@@ -284,52 +326,73 @@ export default function ChatPage() {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-2">
-            {loadingConversations ? (
-              <div className="text-center text-theme-tertiary text-sm py-4">Loading...</div>
-            ) : conversations.length === 0 ? (
-              <div className="text-center text-theme-tertiary text-sm py-4">No conversations yet</div>
-            ) : (
-              <div className="space-y-1">
-                {conversations.map((conv) => (
-                  <button
-                    key={conv.id}
-                    onClick={() => loadConversation(userId, conv.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors border ${
-                      conversationId === conv.id
-                        ? 'bg-blue-500/20 text-blue-600 border-blue-500/40'
-                        : 'hover:bg-theme-card text-theme-secondary border-transparent hover:border-theme'
-                    }`}
-                    style={{
-                      backgroundColor: conversationId === conv.id 
-                        ? 'rgba(59, 130, 246, 0.2)' 
-                        : 'transparent',
-                      borderColor: conversationId === conv.id 
-                        ? 'rgba(59, 130, 246, 0.4)' 
-                        : 'transparent',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (conversationId !== conv.id) {
-                        e.currentTarget.style.backgroundColor = 'var(--bg-card)';
-                        e.currentTarget.style.borderColor = 'var(--border-color)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (conversationId !== conv.id) {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.borderColor = 'transparent';
-                      }
-                    }}
-                  >
-                    <div className="text-sm font-medium truncate text-theme-primary">
-                      {conv.title || `Chat ${conv.id}`}
-                    </div>
-                    <div className="text-xs text-theme-tertiary mt-1">
-                      {new Date(conv.updated_at).toLocaleDateString()}
-                    </div>
-                  </button>
-                ))}
+            {/* Single folder container */}
+            <div className="rounded-xl border border-theme bg-theme-card/40 overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-theme">
+                <button
+                  type="button"
+                  onClick={() => setFolder((f) => ({ ...f, open: !f.open }))}
+                  className="flex items-center gap-2 text-sm font-semibold text-theme-primary"
+                >
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-theme-surface border border-theme">
+                    {folder.open ? '▾' : '▸'}
+                  </span>
+                  Chats
+                  <span className="text-xs font-normal text-theme-tertiary">({conversations.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={deleteAllConversations}
+                  className="text-xs px-2 py-1 rounded-md border border-theme hover:bg-theme-surface text-red-400 hover:text-red-300"
+                  title="Delete all chats"
+                >
+                  Delete All
+                </button>
               </div>
-            )}
+
+              {folder.open ? (
+                <div className="p-1">
+                  {loadingConversations ? (
+                    <div className="text-center text-theme-tertiary text-sm py-4">Loading...</div>
+                  ) : conversations.length === 0 ? (
+                    <div className="text-center text-theme-tertiary text-sm py-4">No chats yet</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {conversations.map((conv) => (
+                        <div
+                          key={conv.id}
+                          className={`group flex items-stretch rounded-lg border ${
+                            conversationId === conv.id
+                              ? 'bg-blue-500/15 border-blue-500/30'
+                              : 'border-transparent hover:border-theme hover:bg-theme-surface'
+                          }`}
+                        >
+                          <button
+                            onClick={() => loadConversation(userId, conv.id)}
+                            className="flex-1 text-left px-3 py-2"
+                          >
+                            <div className="text-sm font-medium truncate text-theme-primary">
+                              {conv.title || `Chat ${conv.id}`}
+                            </div>
+                            <div className="text-xs text-theme-tertiary mt-1">
+                              {new Date(conv.updated_at).toLocaleDateString()}
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteConversation(conv.id)}
+                            className="hidden md:flex items-center px-2 text-theme-tertiary hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Delete chat"
+                          >
+                            🗑
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-"""Conversation API routes for listing and retrieving conversations."""
+"""Conversation API routes for listing, retrieving, and deleting conversations."""
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
@@ -101,3 +101,32 @@ async def get_conversation_messages(
             for msg in messages
         ]
     }
+
+
+@router.delete("/{conversation_id}")
+async def delete_conversation(
+    conversation_id: int,
+    current_user: str = Depends(get_current_user),
+    db: Session = Depends(get_session)
+):
+    """Delete a single conversation for the current user."""
+    user_id = current_user
+    service = ConversationService(db)
+
+    ok = service.delete_conversation(conversation_id, user_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return {"success": True, "deleted_conversation_id": conversation_id}
+
+
+@router.delete("")
+async def delete_all_conversations(
+    current_user: str = Depends(get_current_user),
+    db: Session = Depends(get_session)
+):
+    """Delete all conversations for the current user."""
+    user_id = current_user
+    service = ConversationService(db)
+
+    deleted_count = service.delete_all_conversations(user_id)
+    return {"success": True, "deleted_count": deleted_count}
