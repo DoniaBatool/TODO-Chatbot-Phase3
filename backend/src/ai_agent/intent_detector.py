@@ -206,6 +206,55 @@ class IntentDetector:
             if msg.get('role') == 'assistant':
                 assistant_msg = msg.get('content', '').lower()
                 
+                # Case A: assistant asked WHAT FIELDS to update (follow-up details)
+                # Example:
+                #   Assistant: "Task #12 mein kya update karna hai?"
+                #   User: "title to buy fruits, priority low, deadline tomorrow"
+                update_fields_patterns = [
+                    'what do you want to update',
+                    "what would you like to update",
+                    'tell me what you want to change',
+                    'you can update',
+                    'kya update karna hai',
+                    'kya update kerna hai',
+                    'mein kya update',
+                    'what changes',
+                    'which changes',
+                ]
+                is_asking_update_fields = any(p in assistant_msg for p in update_fields_patterns)
+
+                if is_asking_update_fields:
+                    # If user message contains update details, convert it into an update intent using context task_id
+                    has_details = any(
+                        kw in message_lower
+                        for kw in [
+                            'title', 'priority', 'deadline', 'due date', 'due_date',
+                            'description', 'remove', 'no deadline', 'cancel deadline',
+                            'complete', 'completed', 'incomplete', 'pending', 'undone',
+                            'tomorrow', 'today', 'next'
+                        ]
+                    ) or ('to' in message_lower)
+
+                    if has_details:
+                        task_id = self._get_context_task_id(conversation_history)
+                        # Fallback: extract "#12" if present
+                        if not task_id:
+                            m = re.search(r'#(\d+)', assistant_msg)
+                            if m:
+                                try:
+                                    task_id = int(m.group(1))
+                                except ValueError:
+                                    task_id = None
+
+                        if task_id:
+                            pseudo_message = f"update task #{task_id} {message}"
+                            pseudo_lower = pseudo_message.lower()
+                            intent = self._detect_update_intent(pseudo_message, pseudo_lower, conversation_history)
+                            if intent:
+                                # Ensure we always confirm updates
+                                intent.needs_confirmation = True
+                                return intent
+
                 # Patterns indicating assistant is asking for task specification
                 asking_patterns = [
                     'which task', 'specify which task', 'specify the task',
@@ -247,7 +296,8 @@ class IntentDetector:
                                     operation='update_ask',
                                     task_id=None,
                                     task_title=task_title,
-                                    params=None
+                                    params=None,
+                                    needs_confirmation=True
                                 )
                             elif operation == 'incomplete':
                                 return Intent(
@@ -356,6 +406,38 @@ class IntentDetector:
                                         task_title = title_update_match.group(1).strip()
                                     params['title'] = title_update_match.group(2).strip()
                                     break
+                                # Generic follow-up patterns (user might reply only with fields)
+                                # title / priority / due date / remove due date / description / complete/incomplete
+                                if 'title' not in params:
+                                    m = re.search(r'(?:title)\s*(?:to|:)\s*(.+?)(?:,|$)', prev_content, re.IGNORECASE)
+                                    if m:
+                                        params['title'] = m.group(1).strip()
+                                if 'priority' not in params:
+                                    for level, keywords in self.PRIORITY_MAP.items():
+                                        if any(k in prev_content for k in keywords) or re.search(rf'priority\s*(?:to|:)\s*{level}', prev_content):
+                                            params['priority'] = level
+                                            break
+                                if 'due_date' not in params:
+                                    if re.search(r'remove\s+(?:the\s+)?(?:deadline|due\s+date|due_date)|no\s+(?:deadline|due\s+date)|cancel\s+(?:deadline|due\s+date)', prev_content):
+                                        params['due_date'] = None
+                                    elif any(k in prev_content for k in self.DATE_KEYWORDS) or 'due date' in prev_content or 'deadline' in prev_content:
+                                        # very simple extraction after "due date" / "deadline"
+                                        dm = re.search(r'(?:due\s+date|deadline)\s*(?:to|is|as|:)?\s*(.+?)(?:,|$)', prev_content)
+                                        if dm:
+                                            params['due_date'] = dm.group(1).strip()
+                                        elif 'tomorrow' in prev_content:
+                                            params['due_date'] = 'tomorrow'
+                                        elif 'today' in prev_content:
+                                            params['due_date'] = 'today'
+                                if 'description' not in params:
+                                    dm = re.search(r'description\s*(?:to|:)\s*(.+?)(?:,|$)', prev_content, re.IGNORECASE)
+                                    if dm:
+                                        params['description'] = dm.group(1).strip()
+                                if 'completed' not in params:
+                                    if re.search(r'\b(mark\s+)?(as\s+)?complete(d)?\b|\bdone\b', prev_content) and 'incomplete' not in prev_content:
+                                        params['completed'] = True
+                                    elif re.search(r'\b(incomplete|pending|undone|not\s+done)\b', prev_content):
+                                        params['completed'] = False
                     elif 'incomplete' in content or 'not done' in content or 'pending' in content or 'undone' in content:
                         operation = 'incomplete'
                     elif 'complete' in content or 'mark' in content or 'done' in content:
@@ -733,7 +815,8 @@ class IntentDetector:
                 operation="update_ask",
                 task_id=task_id,
                 task_title=task_title,
-                params=None
+                params=None,
+                needs_confirmation=True  # Always ask what to update
             )
 
         # User is providing update details - extract them!
@@ -802,16 +885,13 @@ class IntentDetector:
             f"params={params}"
         )
 
-        # If user provided update details, execute immediately (no confirmation)
-        # Otherwise, ask clarifying questions first
-        needs_confirmation = not bool(params)
-
         return Intent(
             operation="update",
             task_id=task_id,
             task_title=task_title,
             params=params if params else None,
-            needs_confirmation=needs_confirmation
+            # Always confirm updates before executing
+            needs_confirmation=True
         )
 
 

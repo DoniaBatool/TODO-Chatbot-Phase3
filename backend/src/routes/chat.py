@@ -340,9 +340,14 @@ async def chat(
             limit=50
         )
 
-        # Convert to format expected by agent
+        # Convert to format expected by agent + intent detector.
+        # Include tool_calls for better follow-up/confirmation handling.
         conversation_history = [
-            {"role": msg.role, "content": msg.content}
+            {
+                "role": msg.role,
+                "content": msg.content,
+                "tool_calls": getattr(msg, "tool_calls", None),
+            }
             for msg in history_messages
         ]
 
@@ -377,8 +382,8 @@ async def chat(
                 if detected_intent.task_id:
                     task_details = f" #{detected_intent.task_id}"
                 elif detected_intent.task_title:
+                    # Try to find task by title to get ID for better message + context extraction
                     task_details = f" '{detected_intent.task_title}'"
-                    # Try to find task by title to get ID for better message
                     try:
                         find_params = FindTaskParams(
                             user_id=user_id,
@@ -386,7 +391,7 @@ async def chat(
                         )
                         find_result = find_task(db, find_params)
                         if find_result:
-                            task_details = f" '{find_result.title}' (#{find_result.task_id})"
+                            task_details = f" #{find_result.task_id} ('{find_result.title}')"
                     except:
                         pass
 
@@ -432,10 +437,44 @@ async def chat(
                                 pass
                     confirmation_msg = f"⏳ Task{task_details} ko incomplete mark kar doon? (Mark this task as incomplete?)\n\nReply 'yes' to confirm or 'no' to cancel."
                 elif detected_intent.operation == "update":
-                    confirmation_msg = f"📝 Task{task_details} update kar doon? (Update this task?)\n\nReply 'yes' to confirm or 'no' to cancel."
+                    # Summarize intended changes for explicit confirmation
+                    changes = []
+                    if detected_intent.params:
+                        if 'title' in detected_intent.params and detected_intent.params.get('title') is not None:
+                            changes.append(f"Title → {detected_intent.params.get('title')}")
+                        if 'priority' in detected_intent.params and detected_intent.params.get('priority') is not None:
+                            changes.append(f"Priority → {detected_intent.params.get('priority')}")
+                        if 'due_date' in detected_intent.params:
+                            if detected_intent.params.get('due_date') is None:
+                                changes.append("Due date → removed")
+                            else:
+                                changes.append(f"Due date → {detected_intent.params.get('due_date')}")
+                        if 'description' in detected_intent.params and detected_intent.params.get('description') is not None:
+                            changes.append("Description → updated")
+                        if 'completed' in detected_intent.params and detected_intent.params.get('completed') is not None:
+                            changes.append(f"Completed → {detected_intent.params.get('completed')}")
+                    change_text = "\n".join([f"• {c}" for c in changes]) if changes else "• (no changes detected)"
+                    confirmation_msg = (
+                        f"📝 Update Task{task_details} with these changes?\n\n"
+                        f"{change_text}\n\n"
+                        f"Reply 'yes' to confirm or 'no' to cancel."
+                    )
                 elif detected_intent.operation == "update_ask":
                     # User wants to update but didn't provide details - ask what to update
-                    confirmation_msg = f"📝 Task{task_details} mein kya update karna hai? (What do you want to update?)\n\nYou can update:\n• Title (e.g., 'title to Buy groceries')\n• Priority (e.g., 'priority to high')\n• Due date (e.g., 'due date to Jan 20, 2026 3 PM')\n• Remove due date (e.g., 'remove due date')\n• Description\n\nTell me what you want to change!"
+                    # Ensure task details include explicit "Task #id" when possible for context extraction
+                    if not task_details and detected_intent.task_title:
+                        task_details = f" '{detected_intent.task_title}'"
+                    confirmation_msg = (
+                        f"📝 Task{task_details} — what would you like to update?\n\n"
+                        f"You can reply like:\n"
+                        f"• title to Buy groceries\n"
+                        f"• priority to high\n"
+                        f"• due date to Jan 20, 2026 3 PM\n"
+                        f"• remove due date\n"
+                        f"• description: ...\n"
+                        f"• mark as complete / mark as incomplete\n\n"
+                        f"Tell me the changes, then I'll confirm and apply them."
+                    )
                 else:
                     confirmation_msg = "Kya aap sure hain? (Are you sure?)\n\nReply 'yes' to confirm or 'no' to cancel."
 

@@ -20,8 +20,25 @@ export default function TasksPage() {
   const [actioning, setActioning] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'table'>('table'); // Default, but we auto-switch on mobile
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [query, setQuery] = useState('');
 
   const hasToken = useMemo(() => !!getToken(), []);
+
+  const filteredTasks = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return (tasks || [])
+      .filter((t) => {
+        if (statusFilter === 'completed') return !!t.completed;
+        if (statusFilter === 'pending') return !t.completed;
+        return true;
+      })
+      .filter((t) => {
+        if (!q) return true;
+        const hay = `${t.title || ''} ${t.description || ''} #${t.id}`.toLowerCase();
+        return hay.includes(q);
+      });
+  }, [tasks, query, statusFilter]);
 
   useEffect(() => {
     if (!hasToken) {
@@ -172,8 +189,39 @@ export default function TasksPage() {
         <Card className="space-y-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-semibold text-theme-primary">Task list</h2>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-theme-secondary">View:</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-theme-secondary">Status:</span>
+                <div className="inline-flex rounded-xl border border-theme bg-theme-surface p-1">
+                  <button
+                    onClick={() => setStatusFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      statusFilter === 'all' ? 'bg-blue-500 text-white' : 'text-theme-secondary hover:text-theme-primary'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('pending')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      statusFilter === 'pending' ? 'bg-blue-500 text-white' : 'text-theme-secondary hover:text-theme-primary'
+                    }`}
+                  >
+                    Pending
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('completed')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      statusFilter === 'completed' ? 'bg-blue-500 text-white' : 'text-theme-secondary hover:text-theme-primary'
+                    }`}
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-theme-secondary">View:</span>
               <div className="inline-flex rounded-xl border border-theme bg-theme-surface p-1">
                 <button
                   onClick={() => setViewMode('table')}
@@ -196,23 +244,37 @@ export default function TasksPage() {
                   List
                 </button>
               </div>
+              </div>
             </div>
             {loading ? <span className="text-sm text-theme-tertiary">Loading...</span> : null}
           </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="text-sm text-theme-tertiary">
+              Showing <span className="text-theme-primary font-semibold">{filteredTasks.length}</span> of{' '}
+              <span className="text-theme-primary font-semibold">{tasks.length}</span>
+            </div>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by title, description, or #id"
+              className="w-full sm:w-80 px-4 py-2.5 rounded-xl border border-theme bg-theme-card text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
           {loading ? (
             <p className="text-theme-secondary">Fetching tasks...</p>
-          ) : tasks.length === 0 ? (
+          ) : filteredTasks.length === 0 ? (
             <p className="text-theme-secondary">No tasks yet. Add your first task above.</p>
           ) : viewMode === 'table' ? (
             <TaskTable
-              tasks={tasks}
+              tasks={filteredTasks}
               onComplete={handleComplete}
               onEdit={setEditing}
               onDelete={handleDelete}
             />
           ) : (
             <div className="space-y-3">
-              {tasks.map((task) => (
+              {filteredTasks.map((task) => (
                 <TaskItem
                   key={task.id}
                   task={task}
