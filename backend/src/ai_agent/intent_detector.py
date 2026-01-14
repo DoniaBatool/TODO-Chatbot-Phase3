@@ -116,7 +116,8 @@ class IntentDetector:
         Returns:
             Intent object if detected, None otherwise
         """
-        message_lower = message.lower().strip()
+        # Normalize message (helps parse bullets like "•" and inconsistent separators)
+        message_lower = message.lower().strip().replace('•', ',')
 
         # STEP 1: Check if user is responding to a confirmation question
         pending_confirmation = self._check_pending_confirmation(conversation_history)
@@ -215,6 +216,7 @@ class IntentDetector:
                     "what would you like to update",
                     'tell me what you want to change',
                     'you can update',
+                    'you can reply like',
                     'kya update karna hai',
                     'kya update kerna hai',
                     'mein kya update',
@@ -225,6 +227,8 @@ class IntentDetector:
 
                 if is_asking_update_fields:
                     # If user message contains update details, convert it into an update intent using context task_id
+                    # Normalize bullets here too (user may send "•" list)
+                    normalized_lower = message_lower.replace('•', ',')
                     has_details = any(
                         kw in message_lower
                         for kw in [
@@ -233,7 +237,7 @@ class IntentDetector:
                             'complete', 'completed', 'incomplete', 'pending', 'undone',
                             'tomorrow', 'today', 'next'
                         ]
-                    ) or ('to' in message_lower)
+                    ) or ('title to' in normalized_lower) or ('priority to' in normalized_lower) or ('due date' in normalized_lower)
 
                     if has_details:
                         task_id = self._get_context_task_id(conversation_history)
@@ -626,6 +630,9 @@ class IntentDetector:
     ) -> Optional[Intent]:
         """Detect UPDATE intent and extract parameters."""
 
+        # Normalize bullets and separators
+        message_lower = message_lower.replace('•', ',')
+
         # Extract task identifier (ID or title)
         task_id = self._extract_task_id(message)
         
@@ -798,9 +805,14 @@ class IntentDetector:
         # This is CRITICAL: Detect if user is giving all details at once
         has_update_details = any([
             new_title_from_pattern is not None,  # "update X to Y" pattern detected
-            'change' in message_lower and 'to' in message_lower,
-            'update' in message_lower and ('to' in message_lower or ':' in message_lower),
-            'set' in message_lower and ('to' in message_lower or 'as' in message_lower),
+            # NOTE: don't treat generic word "to" (e.g., "want to update") as update details
+            'priority' in message_lower,
+            'deadline' in message_lower or 'due date' in message_lower or 'due_date' in message_lower,
+            'description' in message_lower,
+            ('title' in message_lower and ('to' in message_lower or ':' in message_lower)),
+            # Stronger patterns for title change without "title" keyword
+            re.search(r'\\bchange\\b.*\\btitle\\b', message_lower) is not None,
+            re.search(r'\\bset\\b.*\\bpriority\\b', message_lower) is not None,
             'priority' in message_lower,
             'deadline' in message_lower or 'due date' in message_lower or 'due_date' in message_lower,
             'description' in message_lower,

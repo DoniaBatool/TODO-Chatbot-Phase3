@@ -508,7 +508,7 @@ export default function ChatPage() {
           </div>
 
           {/* Input Area */}
-          <div className="border-t border-theme bg-theme-surface/90 backdrop-blur px-3 sm:px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
+          <div className="sticky bottom-0 z-20 border-t border-theme bg-theme-surface/90 backdrop-blur px-3 sm:px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
             <form onSubmit={handleSendMessage} className="mx-auto w-full max-w-4xl flex gap-2">
               <input
                 type="text"

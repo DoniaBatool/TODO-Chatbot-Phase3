@@ -132,8 +132,8 @@ export function TaskTable({ tasks, onComplete, onEdit, onDelete }: Props) {
               <td className="hidden lg:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-theme-secondary text-sm">
                 {task.created_at ? new Date(task.created_at).toLocaleDateString() : '—'}
               </td>
-              <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div className="flex justify-end gap-2 flex-wrap">
+              <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium min-w-[240px]">
+                <div className="flex justify-end gap-2 flex-nowrap">
                 <Button
                   variant="secondary"
                   onClick={() => onComplete(task)}
