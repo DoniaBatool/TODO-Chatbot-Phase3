@@ -455,12 +455,12 @@ export default function ChatPage() {
                   <div
                     className={`max-w-[88%] sm:max-w-[75%] lg:max-w-[60%] rounded-2xl px-4 py-3 shadow-sm border border-theme/60 ${
                       message.role === 'user'
-                        ? 'bg-gradient-to-br from-blue-500 to-indigo-500 text-white border-transparent'
+                        ? 'bg-gradient-to-br from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-500 text-white border-transparent shadow-md'
                         : 'bg-theme-surface text-theme-primary'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm whitespace-pre-wrap break-words flex-1">{message.content}</p>
+                      <p className="text-sm whitespace-pre-wrap break-words flex-1 font-medium">{message.content}</p>
                       {message.role === 'assistant' && message.content.trim() && (
                         <div className="flex-shrink-0 mt-1">
                           <TextToSpeech text={message.content} />
@@ -484,7 +484,7 @@ export default function ChatPage() {
                                 key={idx}
                                 className={`text-xs p-2 rounded-lg ${
                                   message.role === 'user'
-                                    ? 'bg-blue-400/20 text-white'
+                                    ? 'bg-blue-500/30 dark:bg-blue-400/20 text-white'
                                     : 'bg-green-500/10 text-green-600 dark:text-green-400'
                                 }`}
                               >
@@ -495,7 +495,7 @@ export default function ChatPage() {
                         </div>
                       </div>
                     )}
-                    <p className={`text-xs mt-2 ${message.role === 'user' ? 'text-blue-100' : 'text-theme-tertiary'}`}>
+                    <p className={`text-xs mt-2 ${message.role === 'user' ? 'text-blue-50 dark:text-blue-100' : 'text-theme-tertiary'}`}>
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
