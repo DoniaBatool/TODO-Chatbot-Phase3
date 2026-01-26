@@ -48,7 +48,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-sm border-b" style={{
+    <header className="sticky top-0 z-[100] backdrop-blur-sm border-b" style={{
       backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.95)',
       borderBottomColor: theme === 'light' ? '#e2e8f0' : '#334155'
     }}>
@@ -178,7 +178,7 @@ export function Header() {
               {/* Dropdown Menu */}
               {showDropdown && (
                 <div
-                  className="dropdown-menu absolute right-0 mt-2 w-56 rounded-lg shadow-xl py-1 z-50"
+                  className="dropdown-menu absolute right-0 mt-2 w-56 rounded-lg shadow-xl py-1 z-[110]"
                   style={{
                     backgroundColor: theme === 'light' ? '#ffffff' : '#1e293b',
                     borderWidth: '1px',
@@ -267,7 +267,7 @@ export function Header() {
       {/* Click outside to close dropdown */}
       {showDropdown && (
         <div
-          className="fixed inset-0 z-40"
+          className="fixed inset-0 z-[105]"
           onClick={() => setShowDropdown(false)}
         />
       )}

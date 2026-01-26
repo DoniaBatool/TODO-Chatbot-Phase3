@@ -237,11 +237,11 @@ class IntentDetector:
                             'complete', 'completed', 'incomplete', 'pending', 'undone',
                             'tomorrow', 'today', 'next'
                         ]
-                    ) or ('title to' in normalized_lower) or ('priority to' in normalized_lower) or ('due date' in normalized_lower)
+                    ) or ('title to' in normalized_lower) or ('priority to' in normalized_lower) or ('due date' in normalized_lower or 'due date to' in normalized_lower)
 
                     if has_details:
                         task_id = self._get_context_task_id(conversation_history)
-                        # Fallback: extract "#12" if present
+                        # Fallback: extract "#12" if present in assistant message
                         if not task_id:
                             m = re.search(r'#(\d+)', assistant_msg)
                             if m:
@@ -251,13 +251,63 @@ class IntentDetector:
                                     task_id = None
 
                         if task_id:
-                            pseudo_message = f"update task #{task_id} {message}"
-                            pseudo_lower = pseudo_message.lower()
-                            intent = self._detect_update_intent(pseudo_message, pseudo_lower, conversation_history)
-                            if intent:
-                                # Ensure we always confirm updates
-                                intent.needs_confirmation = True
-                                return intent
+                            # IMPORTANT: When task_id is known, don't extract task title from message
+                            # Just extract update params directly
+                            params = {}
+                            
+                            # Extract title
+                            title_match = re.search(r'title\s*(?:to|:)\s*(.+?)(?:,|\s+and|priority|deadline|due\s+date|description|mark|incomplete|complete|$)', message_lower, re.IGNORECASE)
+                            if title_match:
+                                params['title'] = title_match.group(1).strip()
+                            
+                            # Extract priority
+                            priority_match = re.search(r'priority\s*(?:to|:)\s*(high|medium|low)', message_lower, re.IGNORECASE)
+                            if priority_match:
+                                params['priority'] = priority_match.group(1).strip().lower()
+                            else:
+                                # Fallback: check for priority keywords
+                                for level, keywords in self.PRIORITY_MAP.items():
+                                    if any(k in message_lower for k in keywords):
+                                        params['priority'] = level
+                                        break
+                            
+                            # Extract due date
+                            if re.search(r'remove\s+(?:the\s+)?(?:deadline|due\s+date|due_date)|no\s+(?:deadline|due\s+date)|cancel\s+(?:deadline|due\s+date)', message_lower):
+                                params['due_date'] = None
+                            else:
+                                due_date_match = re.search(r'(?:update|set|change)\s+(?:the\s+)?due\s+date\s+to\s+(.+?)(?:,|\s+and|description|title|priority|mark|$)', message_lower, re.IGNORECASE)
+                                if due_date_match:
+                                    due_val = due_date_match.group(1).strip()
+                                    due_val = re.sub(r'\s+(and|mark|description|title|priority|incomplete|complete).*$', '', due_val, flags=re.IGNORECASE)
+                                    params['due_date'] = due_val
+                                elif 'tomorrow' in message_lower:
+                                    params['due_date'] = 'tomorrow'
+                                elif 'today' in message_lower:
+                                    params['due_date'] = 'today'
+                            
+                            # Extract description
+                            desc_match = re.search(r'description:?\s+(.+?)(?:,|\s+and|title|priority|deadline|due\s+date|mark|incomplete|complete|$)', message_lower, re.IGNORECASE)
+                            if desc_match:
+                                desc = desc_match.group(1).strip()
+                                desc = re.sub(r'\s+(and|mark|incomplete|complete|title|priority|deadline|due\s+date).*$', '', desc, flags=re.IGNORECASE)
+                                if desc:
+                                    params['description'] = desc
+                            
+                            # Extract completed status
+                            if re.search(r'\b(mark\s+)?(?:it\s+)?(?:as\s+)?(?:incomplete|pending|undone|not\s+done)\b', message_lower) and 'complete' not in message_lower:
+                                params['completed'] = False
+                            elif re.search(r'\b(mark\s+)?(?:it\s+)?(?:as\s+)?complete(d)?\b|\bdone\b', message_lower) and 'incomplete' not in message_lower:
+                                params['completed'] = True
+                            
+                            # Return intent with task_id and params (no task_title extraction)
+                            # Even if params is empty, return intent so user can be asked what to update
+                            return Intent(
+                                operation="update",
+                                task_id=task_id,
+                                task_title=None,  # Don't extract title when task_id is known
+                                params=params if params else None,
+                                needs_confirmation=True
+                            )
 
                 # Patterns indicating assistant is asking for task specification
                 asking_patterns = [
@@ -889,45 +939,79 @@ class IntentDetector:
                         params['title'] = title
                         break
 
-        # Extract priority
-        for priority_level, keywords in self.PRIORITY_MAP.items():
-            if any(keyword in message_lower for keyword in keywords):
-                params['priority'] = priority_level
-                break
+        # Extract priority - check for explicit "priority to X" pattern first
+        priority_patterns = [
+            r'priority\s*(?:to|:)\s*(high|medium|low)',
+            r'set\s+priority\s*(?:to|:)\s*(high|medium|low)',
+            r'priority\s+(?:is|as)\s+(high|medium|low)',
+        ]
+        priority_extracted = False
+        for pattern in priority_patterns:
+            priority_match = re.search(pattern, message_lower, re.IGNORECASE)
+            if priority_match:
+                priority_val = priority_match.group(1).strip().lower()
+                if priority_val in ['high', 'medium', 'low']:
+                    params['priority'] = priority_val
+                    priority_extracted = True
+                    break
+        
+        # Fallback: check for priority keywords in message
+        if not priority_extracted:
+            for priority_level, keywords in self.PRIORITY_MAP.items():
+                if any(keyword in message_lower for keyword in keywords):
+                    params['priority'] = priority_level
+                    break
 
         # Extract deadline/due date - check for remove first
         if re.search(r'remove\s+(?:the\s+)?(?:deadline|due\s+date|due_date)|no\s+(?:deadline|due\s+date)|cancel\s+(?:deadline|due\s+date)', message_lower):
             params['due_date'] = None  # Explicitly remove deadline
         elif any(keyword in message_lower for keyword in self.DATE_KEYWORDS) or 'due date' in message_lower or 'deadline' in message_lower:
-            # Extract the deadline phrase - multiple patterns
+            # Extract the deadline phrase - multiple patterns (IMPROVED)
             deadline_patterns = [
-                r'(?:set|update|change)\s+(?:the\s+)?(?:due\s+date|deadline)\s+(?:for|to|as)\s+(.+?)(?:,|\s+with|\s+and|description|title|priority|$)',
-                r'due\s+date\s+(?:for|to|is|as)\s+(.+?)(?:,|\s+with|\s+and|description|title|priority|$)',
-                r'deadline\s+(?:is\s+)?(.+?)(?:,|\s+with|\s+and|description|title|priority|$)',
+                r'(?:update|set|change)\s+(?:the\s+)?due\s+date\s+to\s+(.+?)(?:,|\s+and|description|title|priority|mark|$)',
+                r'(?:update|set|change)\s+(?:the\s+)?deadline\s+to\s+(.+?)(?:,|\s+and|description|title|priority|mark|$)',
+                r'due\s+date\s+(?:to|is|as|for)\s+(.+?)(?:,|\s+and|description|title|priority|mark|$)',
+                r'deadline\s+(?:to|is|as|for)\s+(.+?)(?:,|\s+and|description|title|priority|mark|$)',
             ]
             for pattern in deadline_patterns:
-                deadline_match = re.search(pattern, message_lower)
+                deadline_match = re.search(pattern, message_lower, re.IGNORECASE)
                 if deadline_match:
-                    params['due_date'] = deadline_match.group(1).strip()
-                    break
+                    due_val = deadline_match.group(1).strip()
+                    # Clean up - remove trailing words
+                    due_val = re.sub(r'\s+(and|mark|description|title|priority|incomplete|complete).*$', '', due_val, flags=re.IGNORECASE)
+                    if due_val:
+                        params['due_date'] = due_val
+                        break
             # Fallback to simple keywords
             if 'due_date' not in params:
                 if 'tomorrow' in message_lower:
                     params['due_date'] = 'tomorrow'
                 elif 'today' in message_lower:
                     params['due_date'] = 'today'
-                # Try to extract any date-like string
+                # Try to extract any date-like string (but avoid extracting task titles)
                 date_match = re.search(r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\w+\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+\w+\s+\d{4})', message_lower)
                 if date_match:
                     params['due_date'] = date_match.group(1).strip()
 
         # Extract description
         description_match = re.search(
-            r'description:?\s+(.+?)(?:,|\s+and|title|priority|deadline|due\s+date|$)',
-            message_lower
+            r'description:?\s+(.+?)(?:,|\s+and|title|priority|deadline|due\s+date|mark|incomplete|complete|$)',
+            message_lower,
+            re.IGNORECASE
         )
         if description_match:
-            params['description'] = description_match.group(1).strip()
+            desc = description_match.group(1).strip()
+            # Clean up - remove trailing operation keywords
+            desc = re.sub(r'\s+(and|mark|incomplete|complete|title|priority|deadline|due\s+date).*$', '', desc, flags=re.IGNORECASE)
+            if desc:
+                params['description'] = desc
+        
+        # Extract completed status (mark as complete/incomplete)
+        if 'completed' not in params:
+            if re.search(r'\b(mark\s+)?(?:it\s+)?(?:as\s+)?(?:incomplete|pending|undone|not\s+done)\b', message_lower) and 'complete' not in message_lower:
+                params['completed'] = False
+            elif re.search(r'\b(mark\s+)?(?:it\s+)?(?:as\s+)?complete(d)?\b|\bdone\b', message_lower) and 'incomplete' not in message_lower:
+                params['completed'] = True
 
         logger.info(
             f"Detected UPDATE intent: task_id={task_id}, task_title={task_title}, "
