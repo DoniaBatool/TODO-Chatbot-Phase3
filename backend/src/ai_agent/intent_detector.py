@@ -1306,10 +1306,25 @@ class IntentDetector:
     ) -> Optional[Intent]:
         """Detect ADD intent and extract task details.
         
-        This doesn't force tool execution yet, just returns the intent
-        so the chat.py can handle the multi-turn conversation flow.
+        If user provides task title in the same message (e.g., "add task: buy milk"),
+        let AI agent handle it. Only return intent if it's a standalone "add task".
         """
-        logger.info("Detected ADD intent")
+        # Check if user provided task title/details in the same message
+        # Patterns: "add task: X", "add task X", "create task X"
+        has_details = (
+            ':' in message or  # "add task: buy milk"
+            # "add task buy milk" (more than just "add task")
+            len(message.split()) > 3 or
+            # Check if there's content after "task" keyword
+            re.search(r'(?:add|create|new)\s+(?:a\s+)?(?:new\s+)?task\s+\w+', message, re.IGNORECASE)
+        )
+        
+        if has_details:
+            # User provided details - let AI agent parse the full request
+            logger.info("ADD intent with details detected - letting AI agent handle")
+            return None
+        
+        logger.info("Detected ADD intent (no details)")
         
         # Return intent with operation "add"
         # chat.py will handle asking for title, priority, etc.
