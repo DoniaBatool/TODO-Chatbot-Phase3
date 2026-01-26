@@ -361,6 +361,44 @@ async def chat(
         detected_intent = detect_user_intent(request.message, conversation_history)
         forced_tool_calls = []
 
+        # Handle explicit cancellation (user said "no" to confirmation)
+        if detected_intent is None:
+            # Check if last assistant message was asking for confirmation
+            if conversation_history:
+                last_assistant_msg = None
+                for msg in reversed(conversation_history[-3:]):
+                    if msg.get('role') == 'assistant':
+                        last_assistant_msg = msg.get('content', '').lower()
+                        break
+                
+                # If assistant was asking for confirmation and user said "no", handle cancellation
+                if last_assistant_msg and ('sure' in last_assistant_msg or 'confirm' in last_assistant_msg or 'cancel' in last_assistant_msg):
+                    message_lower = request.message.lower().strip()
+                    is_no = any(keyword in message_lower for keyword in ['no', 'nahi', 'cancel', 'na', 'nope', 'not'])
+                    if is_no and len(message_lower.split()) <= 3:  # Short message like "no", "nahi", "cancel"
+                        # User cancelled - return friendly cancellation message
+                        cancellation_msg = "❌ Update cancelled. No changes were made."
+                        
+                        conversation_service.add_message(
+                            conversation_id=conversation_id,
+                            user_id=user_id,
+                            role="user",
+                            content=request.message
+                        )
+                        conversation_service.add_message(
+                            conversation_id=conversation_id,
+                            user_id=user_id,
+                            role="assistant",
+                            content=cancellation_msg
+                        )
+                        conversation_service.update_conversation_timestamp(conversation_id)
+                        
+                        return ChatResponse(
+                            conversation_id=conversation_id,
+                            response=cancellation_msg,
+                            tool_calls=[]
+                        )
+
         if detected_intent:
             logger.info(
                 f"Intent detected: {detected_intent}",
@@ -665,65 +703,85 @@ async def chat(
                     has_updates = len(update_params) > 1
                     
                     if has_updates:
-                        # Build confirmation message with formatted template
-                        confirmation_lines = ["📝 **Update Task Confirmation**\n"]
-                        confirmation_lines.append(f"Task ID: #{task_id}\n")
-                        confirmation_lines.append("**Changes to be made:**\n")
-                        
-                        if 'title' in update_params:
-                            confirmation_lines.append(f"  • Title: → \"{update_params['title']}\"")
-                        if 'priority' in update_params:
-                            confirmation_lines.append(f"  • Priority: → {update_params['priority']}")
-                        if 'description' in update_params:
-                            desc = update_params['description']
-                            if desc:
-                                confirmation_lines.append(f"  • Description: → \"{desc[:50]}{'...' if len(desc) > 50 else ''}\"")
-                            else:
-                                confirmation_lines.append(f"  • Description: → (removed)")
-                        if 'due_date' in update_params:
-                            if update_params['due_date']:
-                                try:
-                                    due_dt = datetime.fromisoformat(update_params['due_date'].replace('Z', '+00:00'))
-                                    confirmation_lines.append(f"  • Due Date: → {due_dt.strftime('%B %d, %Y at %I:%M %p')}")
-                                except:
-                                    confirmation_lines.append(f"  • Due Date: → {update_params['due_date']}")
-                            else:
-                                confirmation_lines.append(f"  • Due Date: → (removed)")
-                        
-                        confirmation_lines.append("\n**Kya aap sure hain? (Are you sure?)**")
-                        confirmation_lines.append("Reply 'yes' to confirm or 'no' to cancel.")
-                        
-                        confirmation_msg = "\n".join(confirmation_lines)
-                        
-                        # Store user message and confirmation
-                        conversation_service.add_message(
-                            conversation_id=conversation_id,
-                            user_id=user_id,
-                            role="user",
-                            content=request.message
-                        )
-                        conversation_service.add_message(
-                            conversation_id=conversation_id,
-                            user_id=user_id,
-                            role="assistant",
-                            content=confirmation_msg
-                        )
-                        conversation_service.update_conversation_timestamp(conversation_id)
-                        
-                        logger.info(
-                            f"Update confirmation requested: task_id={task_id}, update_params={update_params}",
-                            extra={
-                                "user_id": user_id, 
-                                "task_id": task_id,
-                                "update_params": update_params
-                            }
-                        )
-                        
-                        return ChatResponse(
-                            conversation_id=conversation_id,
-                            response=confirmation_msg,
-                            tool_calls=[]
-                        )
+                        # Check if user already confirmed (needs_confirmation=False means they said "yes")
+                        # If already confirmed, execute update directly. Otherwise, show confirmation template.
+                        if not detected_intent.needs_confirmation:
+                            # User already confirmed - EXECUTE UPDATE DIRECTLY
+                            forced_tool_calls.append({
+                                'tool': 'update_task',
+                                'params': update_params
+                            })
+                            
+                            logger.info(
+                                f"FORCED UPDATE (confirmed): task_id={task_id}, update_params={update_params}",
+                                extra={
+                                    "user_id": user_id, 
+                                    "task_id": task_id,
+                                    "update_params": update_params
+                                }
+                            )
+                            # Continue to AI agent for response generation
+                        else:
+                            # User hasn't confirmed yet - show confirmation template
+                            # Build confirmation message with formatted template
+                            confirmation_lines = ["📝 **Update Task Confirmation**\n"]
+                            confirmation_lines.append(f"Task ID: #{task_id}\n")
+                            confirmation_lines.append("**Changes to be made:**\n")
+                            
+                            if 'title' in update_params:
+                                confirmation_lines.append(f"  • Title: → \"{update_params['title']}\"")
+                            if 'priority' in update_params:
+                                confirmation_lines.append(f"  • Priority: → {update_params['priority']}")
+                            if 'description' in update_params:
+                                desc = update_params['description']
+                                if desc:
+                                    confirmation_lines.append(f"  • Description: → \"{desc[:50]}{'...' if len(desc) > 50 else ''}\"")
+                                else:
+                                    confirmation_lines.append(f"  • Description: → (removed)")
+                            if 'due_date' in update_params:
+                                if update_params['due_date']:
+                                    try:
+                                        due_dt = datetime.fromisoformat(update_params['due_date'].replace('Z', '+00:00'))
+                                        confirmation_lines.append(f"  • Due Date: → {due_dt.strftime('%B %d, %Y at %I:%M %p')}")
+                                    except:
+                                        confirmation_lines.append(f"  • Due Date: → {update_params['due_date']}")
+                                else:
+                                    confirmation_lines.append(f"  • Due Date: → (removed)")
+                            
+                            confirmation_lines.append("\n**Kya aap sure hain? (Are you sure?)**")
+                            confirmation_lines.append("Reply 'yes' to confirm or 'no' to cancel.")
+                            
+                            confirmation_msg = "\n".join(confirmation_lines)
+                            
+                            # Store user message and confirmation
+                            conversation_service.add_message(
+                                conversation_id=conversation_id,
+                                user_id=user_id,
+                                role="user",
+                                content=request.message
+                            )
+                            conversation_service.add_message(
+                                conversation_id=conversation_id,
+                                user_id=user_id,
+                                role="assistant",
+                                content=confirmation_msg
+                            )
+                            conversation_service.update_conversation_timestamp(conversation_id)
+                            
+                            logger.info(
+                                f"Update confirmation requested: task_id={task_id}, update_params={update_params}",
+                                extra={
+                                    "user_id": user_id, 
+                                    "task_id": task_id,
+                                    "update_params": update_params
+                                }
+                            )
+                            
+                            return ChatResponse(
+                                conversation_id=conversation_id,
+                                response=confirmation_msg,
+                                tool_calls=[]
+                            )
                     else:
                         # No update params provided - this shouldn't happen
                         logger.warning(
