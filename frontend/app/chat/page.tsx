@@ -307,14 +307,16 @@ export default function ChatPage() {
           />
         ) : null}
 
-        {/* Sidebar - Fixed on all screen sizes */}
+        {/* Sidebar - Fixed on all screen sizes, toggleable on all sizes */}
         <div
           className={`${
             // Mobile: overlay sidebar
             sidebarOpen
-              ? 'w-64 fixed inset-y-0 left-0 z-40'
-              : 'w-0'
-          } md:fixed md:inset-y-0 md:left-0 md:z-40 md:w-64 transition-all duration-300 border-r border-theme bg-theme-surface overflow-hidden flex flex-col`}
+              ? 'w-64 fixed inset-y-0 left-0 z-40 translate-x-0'
+              : 'w-0 -translate-x-full'
+          } md:fixed md:inset-y-0 md:left-0 md:z-40 transition-all duration-300 border-r border-theme bg-theme-surface overflow-hidden flex flex-col ${
+            sidebarOpen ? 'md:w-64' : 'md:w-0'
+          }`}
         >
           <div className="p-4 border-b border-theme">
             <button
@@ -398,14 +400,18 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Main Chat Area - Add left margin on desktop to account for fixed sidebar */}
-        <div className="flex-1 flex flex-col min-w-0 md:ml-64">
+        {/* Main Chat Area - Add left margin on desktop when sidebar is open */}
+        <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-0'}`}>
           {/* Top Bar */}
-          <div className="border-b border-theme bg-theme-surface/80 backdrop-blur px-3 sm:px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+          <div className="border-b border-theme bg-theme-surface/80 backdrop-blur px-3 sm:px-4 py-3 flex items-center justify-between sticky top-0 z-50">
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 hover:bg-theme-card rounded-lg transition-colors text-theme-secondary hover:text-theme-primary cursor-pointer relative z-10"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSidebarOpen(!sidebarOpen);
+                }}
+                className="p-2 hover:bg-theme-card rounded-lg transition-colors text-theme-secondary hover:text-theme-primary cursor-pointer relative z-50"
                 aria-label="Toggle sidebar"
                 type="button"
               >
