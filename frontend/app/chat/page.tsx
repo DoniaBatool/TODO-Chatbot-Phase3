@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { getToken, getUserIdFromToken } from '@/lib/auth';
 import { apiFetch, AuthError } from '@/lib/api';
+import { VoiceRecorder } from '@/components/VoiceRecorder';
+import { TextToSpeech } from '@/components/TextToSpeech';
 
 interface Message {
   id: string;
@@ -399,21 +401,30 @@ export default function ChatPage() {
         {/* Main Chat Area - Add left margin on desktop to account for fixed sidebar */}
         <div className="flex-1 flex flex-col min-w-0 md:ml-64">
           {/* Top Bar */}
-          <div className="border-b border-theme bg-theme-surface/80 backdrop-blur px-3 sm:px-4 py-3 flex items-center justify-between">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-theme-card rounded-lg transition-colors text-theme-secondary hover:text-theme-primary"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bg-card)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+          <div className="border-b border-theme bg-theme-surface/80 backdrop-blur px-3 sm:px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="p-2 hover:bg-theme-card rounded-lg transition-colors text-theme-secondary hover:text-theme-primary cursor-pointer relative z-10"
+                aria-label="Toggle sidebar"
+                type="button"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              <button
+                onClick={startNewChat}
+                className="px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center gap-1.5 shadow-sm"
+                aria-label="Start new chat"
+                type="button"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                New Chat
+              </button>
+            </div>
             <h1 className="text-base sm:text-lg font-semibold text-theme-primary">AI Chat Assistant</h1>
             <div className="w-9"></div>
           </div>
@@ -442,7 +453,14 @@ export default function ChatPage() {
                         : 'bg-theme-surface text-theme-primary'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm whitespace-pre-wrap break-words flex-1">{message.content}</p>
+                      {message.role === 'assistant' && message.content.trim() && (
+                        <div className="flex-shrink-0 mt-1">
+                          <TextToSpeech text={message.content} />
+                        </div>
+                      )}
+                    </div>
                     {message.tool_calls && message.tool_calls.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-theme">
                         <p className="text-xs font-semibold mb-2 opacity-90">
@@ -510,19 +528,29 @@ export default function ChatPage() {
           {/* Input Area */}
           <div className="sticky bottom-0 z-20 border-t border-theme bg-theme-surface/90 backdrop-blur px-3 sm:px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
             <form onSubmit={handleSendMessage} className="mx-auto w-full max-w-4xl flex gap-2">
-              <input
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Type your message... (e.g., 'Update task 1 title to Buy groceries')"
-                disabled={isLoading}
-                className="flex-1 px-4 py-3 rounded-2xl border border-theme bg-theme-card text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                style={{
-                  backgroundColor: 'var(--bg-card)',
-                  color: 'var(--text-primary)',
-                  borderColor: 'var(--border-color)',
-                }}
-              />
+              <div className="flex-1 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  placeholder="Type your message... (e.g., 'Update task 1 title to Buy groceries')"
+                  disabled={isLoading}
+                  className="flex-1 px-4 py-3 rounded-2xl border border-theme bg-theme-card text-theme-primary placeholder:text-theme-tertiary focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  style={{
+                    backgroundColor: 'var(--bg-card)',
+                    color: 'var(--text-primary)',
+                    borderColor: 'var(--border-color)',
+                  }}
+                />
+                <div className="flex-shrink-0">
+                  <VoiceRecorder
+                    onTranscription={(text) => {
+                      setInputMessage(text);
+                    }}
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
               <button
                 type="submit"
                 disabled={isLoading || !inputMessage.trim()}
