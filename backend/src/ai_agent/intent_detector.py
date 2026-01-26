@@ -378,70 +378,107 @@ class IntentDetector:
                     
                     if 'delete' in content or 'remove' in content:
                         operation = 'delete'
-                    elif 'update' in content or 'change' in content or 'edit' in content:
+                    el                    if 'update' in content or 'change' in content or 'edit' in content:
                         operation = 'update'
-                        # Look back at previous user messages to extract update params
-                        for prev_msg in reversed(conversation_history[-6:]):
-                            if prev_msg.get('role') == 'user':
-                                prev_content = prev_msg.get('content', '').lower()
-                                # Pattern: "update the task X to Y" or "update X task to Y"
-                                update_match = re.search(
-                                    r'update\s+(?:the\s+)?(.+?)\s+task\s+to\s+(.+?)(?:$|,|\s+with|\s+and)',
-                                    prev_content,
-                                    re.IGNORECASE
-                                )
-                                if update_match:
-                                    # Extract new title
-                                    new_title = update_match.group(2).strip()
-                                    params['title'] = new_title
-                                    # Also extract task title if not already found
-                                    if not task_title:
-                                        task_title = update_match.group(1).strip()
-                                        task_title = re.sub(r'^(the|a|an)\s+', '', task_title, flags=re.IGNORECASE)
-                                    break
-                                # Pattern: "update task X title to Y"
-                                title_update_match = re.search(
-                                    r'update\s+(?:the\s+)?task\s+(.+?)\s+title\s+to\s+(.+?)(?:$|,|\s+with|\s+and)',
-                                    prev_content,
-                                    re.IGNORECASE
-                                )
-                                if title_update_match:
-                                    if not task_title:
-                                        task_title = title_update_match.group(1).strip()
-                                    params['title'] = title_update_match.group(2).strip()
-                                    break
-                                # Generic follow-up patterns (user might reply only with fields)
-                                # title / priority / due date / remove due date / description / complete/incomplete
-                                if 'title' not in params:
-                                    m = re.search(r'(?:title)\s*(?:to|:)\s*(.+?)(?:,|$)', prev_content, re.IGNORECASE)
-                                    if m:
-                                        params['title'] = m.group(1).strip()
-                                if 'priority' not in params:
-                                    for level, keywords in self.PRIORITY_MAP.items():
-                                        if any(k in prev_content for k in keywords) or re.search(rf'priority\s*(?:to|:)\s*{level}', prev_content):
-                                            params['priority'] = level
-                                            break
-                                if 'due_date' not in params:
-                                    if re.search(r'remove\s+(?:the\s+)?(?:deadline|due\s+date|due_date)|no\s+(?:deadline|due\s+date)|cancel\s+(?:deadline|due\s+date)', prev_content):
-                                        params['due_date'] = None
-                                    elif any(k in prev_content for k in self.DATE_KEYWORDS) or 'due date' in prev_content or 'deadline' in prev_content:
-                                        # very simple extraction after "due date" / "deadline"
-                                        dm = re.search(r'(?:due\s+date|deadline)\s*(?:to|is|as|:)?\s*(.+?)(?:,|$)', prev_content)
+                        
+                        # FIRST: Try to extract params from confirmation template (assistant message)
+                        # Pattern: "📝 **Update Task Confirmation**" with formatted fields
+                        if 'update task confirmation' in content.lower() or 'changes to be made' in content.lower():
+                            # Extract task ID from confirmation template
+                            task_id_match = re.search(r'task\s+id:\s*#(\d+)', content, re.IGNORECASE)
+                            if task_id_match:
+                                task_id = int(task_id_match.group(1))
+                            
+                            # Extract title from template: "• Title: → \"value\""
+                            title_match = re.search(r'title:\s*→\s*["\'](.+?)["\']', content, re.IGNORECASE)
+                            if title_match:
+                                params['title'] = title_match.group(1).strip()
+                            
+                            # Extract priority: "• Priority: → value"
+                            priority_match = re.search(r'priority:\s*→\s*(\w+)', content, re.IGNORECASE)
+                            if priority_match:
+                                priority_val = priority_match.group(1).strip().lower()
+                                if priority_val in ['high', 'medium', 'low']:
+                                    params['priority'] = priority_val
+                            
+                            # Extract description: "• Description: → \"value\""
+                            desc_match = re.search(r'description:\s*→\s*["\'](.+?)["\']', content, re.IGNORECASE)
+                            if desc_match:
+                                params['description'] = desc_match.group(1).strip()
+                            
+                            # Extract due date: "• Due Date: → value" or "(removed)"
+                            due_date_match = re.search(r'due\s+date:\s*→\s*(.+?)(?:\n|$)', content, re.IGNORECASE)
+                            if due_date_match:
+                                due_val = due_date_match.group(1).strip()
+                                if '(removed)' in due_val.lower():
+                                    params['due_date'] = None
+                                else:
+                                    # Store the date string as-is, will be parsed later
+                                    params['due_date'] = due_val
+                        
+                        # FALLBACK: Look back at previous user messages to extract update params
+                        if not params:
+                            for prev_msg in reversed(conversation_history[-6:]):
+                                if prev_msg.get('role') == 'user':
+                                    prev_content = prev_msg.get('content', '').lower()
+                                    # Pattern: "update the task X to Y" or "update X task to Y"
+                                    update_match = re.search(
+                                        r'update\s+(?:the\s+)?(.+?)\s+task\s+to\s+(.+?)(?:$|,|\s+with|\s+and)',
+                                        prev_content,
+                                        re.IGNORECASE
+                                    )
+                                    if update_match:
+                                        # Extract new title
+                                        new_title = update_match.group(2).strip()
+                                        params['title'] = new_title
+                                        # Also extract task title if not already found
+                                        if not task_title:
+                                            task_title = update_match.group(1).strip()
+                                            task_title = re.sub(r'^(the|a|an)\s+', '', task_title, flags=re.IGNORECASE)
+                                        break
+                                    # Pattern: "update task X title to Y"
+                                    title_update_match = re.search(
+                                        r'update\s+(?:the\s+)?task\s+(.+?)\s+title\s+to\s+(.+?)(?:$|,|\s+with|\s+and)',
+                                        prev_content,
+                                        re.IGNORECASE
+                                    )
+                                    if title_update_match:
+                                        if not task_title:
+                                            task_title = title_update_match.group(1).strip()
+                                        params['title'] = title_update_match.group(2).strip()
+                                        break
+                                    # Generic follow-up patterns (user might reply only with fields)
+                                    # title / priority / due date / remove due date / description / complete/incomplete
+                                    if 'title' not in params:
+                                        m = re.search(r'(?:title)\s*(?:to|:)\s*(.+?)(?:,|$)', prev_content, re.IGNORECASE)
+                                        if m:
+                                            params['title'] = m.group(1).strip()
+                                    if 'priority' not in params:
+                                        for level, keywords in self.PRIORITY_MAP.items():
+                                            if any(k in prev_content for k in keywords) or re.search(rf'priority\s*(?:to|:)\s*{level}', prev_content):
+                                                params['priority'] = level
+                                                break
+                                    if 'due_date' not in params:
+                                        if re.search(r'remove\s+(?:the\s+)?(?:deadline|due\s+date|due_date)|no\s+(?:deadline|due\s+date)|cancel\s+(?:deadline|due\s+date)', prev_content):
+                                            params['due_date'] = None
+                                        elif any(k in prev_content for k in self.DATE_KEYWORDS) or 'due date' in prev_content or 'deadline' in prev_content:
+                                            # very simple extraction after "due date" / "deadline"
+                                            dm = re.search(r'(?:due\s+date|deadline)\s*(?:to|is|as|:)?\s*(.+?)(?:,|$)', prev_content)
+                                            if dm:
+                                                params['due_date'] = dm.group(1).strip()
+                                            elif 'tomorrow' in prev_content:
+                                                params['due_date'] = 'tomorrow'
+                                            elif 'today' in prev_content:
+                                                params['due_date'] = 'today'
+                                    if 'description' not in params:
+                                        dm = re.search(r'description\s*(?:to|:)\s*(.+?)(?:,|$)', prev_content, re.IGNORECASE)
                                         if dm:
-                                            params['due_date'] = dm.group(1).strip()
-                                        elif 'tomorrow' in prev_content:
-                                            params['due_date'] = 'tomorrow'
-                                        elif 'today' in prev_content:
-                                            params['due_date'] = 'today'
-                                if 'description' not in params:
-                                    dm = re.search(r'description\s*(?:to|:)\s*(.+?)(?:,|$)', prev_content, re.IGNORECASE)
-                                    if dm:
-                                        params['description'] = dm.group(1).strip()
-                                if 'completed' not in params:
-                                    if re.search(r'\b(mark\s+)?(as\s+)?complete(d)?\b|\bdone\b', prev_content) and 'incomplete' not in prev_content:
-                                        params['completed'] = True
-                                    elif re.search(r'\b(incomplete|pending|undone|not\s+done)\b', prev_content):
-                                        params['completed'] = False
+                                            params['description'] = dm.group(1).strip()
+                                    if 'completed' not in params:
+                                        if re.search(r'\b(mark\s+)?(as\s+)?complete(d)?\b|\bdone\b', prev_content) and 'incomplete' not in prev_content:
+                                            params['completed'] = True
+                                        elif re.search(r'\b(incomplete|pending|undone|not\s+done)\b', prev_content):
+                                            params['completed'] = False
                     elif 'incomplete' in content or 'not done' in content or 'pending' in content or 'undone' in content:
                         operation = 'incomplete'
                     elif 'complete' in content or 'mark' in content or 'done' in content:

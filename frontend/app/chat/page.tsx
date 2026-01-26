@@ -305,14 +305,14 @@ export default function ChatPage() {
           />
         ) : null}
 
-        {/* Sidebar */}
+        {/* Sidebar - Fixed on all screen sizes */}
         <div
           className={`${
             // Mobile: overlay sidebar
             sidebarOpen
               ? 'w-64 fixed inset-y-0 left-0 z-40'
               : 'w-0'
-          } md:relative md:z-auto transition-all duration-300 border-r border-theme bg-theme-surface overflow-hidden flex flex-col`}
+          } md:fixed md:inset-y-0 md:left-0 md:z-40 md:w-64 transition-all duration-300 border-r border-theme bg-theme-surface overflow-hidden flex flex-col`}
         >
           <div className="p-4 border-b border-theme">
             <button
@@ -396,8 +396,8 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col min-w-0">
+        {/* Main Chat Area - Add left margin on desktop to account for fixed sidebar */}
+        <div className="flex-1 flex flex-col min-w-0 md:ml-64">
           {/* Top Bar */}
           <div className="border-b border-theme bg-theme-surface/80 backdrop-blur px-3 sm:px-4 py-3 flex items-center justify-between">
             <button

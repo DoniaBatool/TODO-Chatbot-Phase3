@@ -661,25 +661,71 @@ async def chat(
                             if due_date:
                                 update_params['due_date'] = due_date.isoformat()
 
-                    # FORCE update_task execution
-                    forced_tool_calls.append({
-                        'tool': 'update_task',
-                        'params': update_params
-                    })
-
-                    logger.info(
-                        f"FORCED UPDATE: task_id={task_id}, update_params={update_params}",
-                        extra={
-                            "user_id": user_id, 
-                            "task_id": task_id,
-                            "update_params": update_params,
-                            "detected_intent_params": detected_intent.params
-                        }
-                    )
+                    # Check if we have actual update fields (not just task_id)
+                    has_updates = len(update_params) > 1
                     
-                    # If update_params only has task_id, that means no actual updates were provided
-                    # This shouldn't happen, but log a warning if it does
-                    if len(update_params) == 1:
+                    if has_updates:
+                        # Build confirmation message with formatted template
+                        confirmation_lines = ["📝 **Update Task Confirmation**\n"]
+                        confirmation_lines.append(f"Task ID: #{task_id}\n")
+                        confirmation_lines.append("**Changes to be made:**\n")
+                        
+                        if 'title' in update_params:
+                            confirmation_lines.append(f"  • Title: → \"{update_params['title']}\"")
+                        if 'priority' in update_params:
+                            confirmation_lines.append(f"  • Priority: → {update_params['priority']}")
+                        if 'description' in update_params:
+                            desc = update_params['description']
+                            if desc:
+                                confirmation_lines.append(f"  • Description: → \"{desc[:50]}{'...' if len(desc) > 50 else ''}\"")
+                            else:
+                                confirmation_lines.append(f"  • Description: → (removed)")
+                        if 'due_date' in update_params:
+                            if update_params['due_date']:
+                                try:
+                                    due_dt = datetime.fromisoformat(update_params['due_date'].replace('Z', '+00:00'))
+                                    confirmation_lines.append(f"  • Due Date: → {due_dt.strftime('%B %d, %Y at %I:%M %p')}")
+                                except:
+                                    confirmation_lines.append(f"  • Due Date: → {update_params['due_date']}")
+                            else:
+                                confirmation_lines.append(f"  • Due Date: → (removed)")
+                        
+                        confirmation_lines.append("\n**Kya aap sure hain? (Are you sure?)**")
+                        confirmation_lines.append("Reply 'yes' to confirm or 'no' to cancel.")
+                        
+                        confirmation_msg = "\n".join(confirmation_lines)
+                        
+                        # Store user message and confirmation
+                        conversation_service.add_message(
+                            conversation_id=conversation_id,
+                            user_id=user_id,
+                            role="user",
+                            content=request.message
+                        )
+                        conversation_service.add_message(
+                            conversation_id=conversation_id,
+                            user_id=user_id,
+                            role="assistant",
+                            content=confirmation_msg
+                        )
+                        conversation_service.update_conversation_timestamp(conversation_id)
+                        
+                        logger.info(
+                            f"Update confirmation requested: task_id={task_id}, update_params={update_params}",
+                            extra={
+                                "user_id": user_id, 
+                                "task_id": task_id,
+                                "update_params": update_params
+                            }
+                        )
+                        
+                        return ChatResponse(
+                            conversation_id=conversation_id,
+                            response=confirmation_msg,
+                            tool_calls=[]
+                        )
+                    else:
+                        # No update params provided - this shouldn't happen
                         logger.warning(
                             f"Update intent detected but no update params provided! task_id={task_id}",
                             extra={"user_id": user_id, "detected_intent": str(detected_intent)}
