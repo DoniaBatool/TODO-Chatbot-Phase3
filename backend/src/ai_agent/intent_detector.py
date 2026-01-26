@@ -378,7 +378,7 @@ class IntentDetector:
                     
                     if 'delete' in content or 'remove' in content:
                         operation = 'delete'
-                    el                    if 'update' in content or 'change' in content or 'edit' in content:
+                    elif 'update' in content or 'change' in content or 'edit' in content:
                         operation = 'update'
                         
                         # FIRST: Try to extract params from confirmation template (assistant message)
