@@ -380,6 +380,8 @@ async def chat(
                         operation_type = "update"  # default
                         if 'delete' in last_assistant_msg or '🗑️' in last_assistant_msg:
                             operation_type = "delete"
+                        elif 'add' in last_assistant_msg or 'create' in last_assistant_msg or '➕' in last_assistant_msg or '📝' in last_assistant_msg and 'task' in last_assistant_msg.lower() and 'add' in last_assistant_msg.lower():
+                            operation_type = "add"
                         elif 'complete' in last_assistant_msg or '✅' in last_assistant_msg:
                             operation_type = "complete"
                         elif 'incomplete' in last_assistant_msg or '⏳' in last_assistant_msg:
@@ -390,6 +392,8 @@ async def chat(
                         # Generate operation-specific cancellation message
                         if operation_type == "delete":
                             cancellation_msg = "❌ Deletion cancelled. No task was deleted."
+                        elif operation_type == "add":
+                            cancellation_msg = "❌ Add task cancelled. No task was created."
                         elif operation_type == "complete":
                             cancellation_msg = "❌ Completion cancelled. Task status unchanged."
                         elif operation_type == "incomplete":
@@ -1107,8 +1111,8 @@ async def chat(
         # BUT: If we have confirmed forced tool calls, skip AI agent to avoid errors
         skip_ai_agent = False
         if forced_tool_calls:
-            # Check if all forced tool calls are confirmed operations (update, delete, complete, incomplete)
-            confirmed_operations = ['update_task', 'delete_task', 'complete_task']
+            # Check if all forced tool calls are confirmed operations (add, update, delete, complete, incomplete)
+            confirmed_operations = ['add_task', 'update_task', 'delete_task', 'complete_task']
             skip_ai_agent = all(
                 tool_call.get('tool') in confirmed_operations 
                 for tool_call in forced_tool_calls
@@ -1571,7 +1575,11 @@ async def chat(
                 tool_name = tool_call.get('tool')
                 tool_result = tool_call.get('result', {})
                 
-                if tool_name == 'update_task' and 'error' not in tool_result:
+                if tool_name == 'add_task' and 'error' not in tool_result:
+                    task_id = tool_result.get('task_id')
+                    title = tool_result.get('title', 'task')
+                    response_lines.append(f"✅ I've added task #{task_id}: '{title}' to your tasks.")
+                elif tool_name == 'update_task' and 'error' not in tool_result:
                     task_id = tool_result.get('task_id')
                     title = tool_result.get('title', 'task')
                     updates = []
