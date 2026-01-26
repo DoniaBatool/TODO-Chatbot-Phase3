@@ -88,6 +88,8 @@ class IntentDetector:
         re.compile(r'add\s+(?:a\s+)?(?:new\s+)?task', re.IGNORECASE),
         re.compile(r'create\s+(?:a\s+)?(?:new\s+)?task', re.IGNORECASE),
         re.compile(r'new\s+task', re.IGNORECASE),
+        # Allow trailing words (e.g., "add task please")
+        re.compile(r'(?:add|create|new)\s+(?:a\s+)?(?:new\s+)?task(?:\s+.*)?', re.IGNORECASE),
     ]
 
     # Patterns for LIST intent
@@ -97,6 +99,9 @@ class IntentDetector:
         re.compile(r'what\s+tasks\s+do\s+i\s+have', re.IGNORECASE),
         re.compile(r'view\s+(?:all\s+)?(?:my\s+)?tasks', re.IGNORECASE),
         re.compile(r'get\s+(?:all\s+)?(?:my\s+)?tasks', re.IGNORECASE),
+        re.compile(r'(?:show|list|display)\s+(?:all\s+)?(?:my\s+)?task\b', re.IGNORECASE),
+        # Allow trailing words and singular/plural (e.g., "show all task please")
+        re.compile(r'(?:show|list|display)\s+(?:all\s+)?(?:my\s+)?tasks?(?:\s+.*)?$', re.IGNORECASE),
     ]
 
     # Priority keywords
@@ -161,6 +166,25 @@ class IntentDetector:
         follow_up_intent = self._check_follow_up_response(message, message_lower, conversation_history)
         if follow_up_intent:
             return follow_up_intent
+
+        # STEP 1.75: If user explicitly provides a task title (common follow-up)
+        # Example: "title of the task is buy pen" or "task title: buy pen"
+        explicit_title_match = re.search(
+            r'^(?:the\s+)?(?:task\s+)?title(?:\s+of\s+the\s+task)?\s*(?:is|:)\s+(.+)$',
+            message,
+            re.IGNORECASE
+        )
+        if explicit_title_match:
+            task_title = explicit_title_match.group(1).strip()
+            if task_title and len(task_title) >= 2:
+                logger.info(f"Detected explicit title follow-up: '{task_title}'")
+                return Intent(
+                    operation="add",
+                    task_id=None,
+                    task_title=None,
+                    params={"title": task_title},
+                    needs_confirmation=False
+                )
 
         # STEP 2: Check for UPDATE intent
         if self._matches_any_pattern(message, self.UPDATE_PATTERNS):
@@ -332,6 +356,35 @@ class IntentDetector:
                                 params=params if params else None,
                                 needs_confirmation=True
                             )
+
+                # Case B: assistant asked for task title (add task follow-up)
+                add_title_patterns = [
+                    "what's the title",
+                    "what is the title",
+                    "task title",
+                    "title of the task",
+                    "title you'd like to add",
+                    "title you would like to add"
+                ]
+                is_asking_add_title = any(p in assistant_msg for p in add_title_patterns)
+
+                if is_asking_add_title:
+                    # Extract title from current message
+                    task_title = message.strip()
+                    task_title = re.sub(r'^(the\s+)?title\s+of\s+the\s+task\s+is\s+', '', task_title, flags=re.IGNORECASE)
+                    task_title = re.sub(r'^(the\s+)?title\s+is\s+', '', task_title, flags=re.IGNORECASE)
+                    task_title = re.sub(r'^(task\s+title\s+is|task\s+title:|title:|it\s+is|it\'s)\s+', '', task_title, flags=re.IGNORECASE)
+                    task_title = task_title.strip()
+
+                    if task_title and len(task_title) >= 2:
+                        logger.info(f"Detected add follow-up title: '{task_title}'")
+                        return Intent(
+                            operation="add",
+                            task_id=None,
+                            task_title=None,
+                            params={"title": task_title},
+                            needs_confirmation=False
+                        )
 
                 # Patterns indicating assistant is asking for task specification
                 asking_patterns = [
@@ -1136,7 +1189,7 @@ class IntentDetector:
                     operation="delete_ask",  # Special operation to ask which task
                     task_id=None,
                     task_title=None,
-                    needs_confirmation=False  # Not a confirmation, just asking for task
+                    needs_confirmation=True  # Ask user which task to delete
                 )
 
         logger.info(
@@ -1208,7 +1261,13 @@ class IntentDetector:
             task_id = self._get_context_task_id(conversation_history)
 
         if not task_id and not task_title:
-            return None
+            return Intent(
+                operation="complete_ask",
+                task_id=None,
+                task_title=None,
+                params=None,
+                needs_confirmation=True
+            )
 
         logger.info(
             f"Detected COMPLETE intent: task_id={task_id}, task_title={task_title}"
@@ -1279,7 +1338,13 @@ class IntentDetector:
             task_id = self._get_context_task_id(conversation_history)
 
         if not task_id and not task_title:
-            return None
+            return Intent(
+                operation="incomplete_ask",
+                task_id=None,
+                task_title=None,
+                params={"completed": False},
+                needs_confirmation=True
+            )
 
         logger.info(
             f"Detected INCOMPLETE intent: task_id={task_id}, task_title={task_title}"
@@ -1304,22 +1369,25 @@ class IntentDetector:
         """Detect ADD intent and extract task details.
         
         If user provides task title in the same message (e.g., "add task: buy milk"),
-        let AI agent handle it. Only return intent if it's a standalone "add task".
+        extract title and handle deterministically to avoid AI dependency.
         """
-        # Check if user provided task title/details in the same message
-        # Patterns: "add task: X", "add task X", "create task X"
-        has_details = (
-            ':' in message or  # "add task: buy milk"
-            # "add task buy milk" (more than just "add task")
-            len(message.split()) > 3 or
-            # Check if there's content after "task" keyword
-            re.search(r'(?:add|create|new)\s+(?:a\s+)?(?:new\s+)?task\s+\w+', message, re.IGNORECASE)
+        # Try to extract title from same message
+        title_match = re.search(
+            r'(?:add|create|new)\s+(?:a\s+)?(?:new\s+)?task(?:\s*[:\-])?\s+(.+)$',
+            message,
+            re.IGNORECASE
         )
-        
-        if has_details:
-            # User provided details - let AI agent parse the full request
-            logger.info("ADD intent with details detected - letting AI agent handle")
-            return None
+        if title_match:
+            task_title = title_match.group(1).strip()
+            if task_title:
+                logger.info(f"Detected ADD intent with title: '{task_title}'")
+                return Intent(
+                    operation="add",
+                    task_id=None,
+                    task_title=None,
+                    params={"title": task_title},
+                    needs_confirmation=False
+                )
         
         logger.info("Detected ADD intent (no details)")
         
