@@ -878,7 +878,14 @@ class IntentDetector:
 
         # If still not found, this is likely first turn asking what to update
         if not task_id and not task_title:
-            return None
+            # Return update_ask intent to ask which task to update
+            return Intent(
+                operation="update_ask",
+                task_id=None,
+                task_title=None,
+                params=None,
+                needs_confirmation=True  # Always ask what to update
+            )
 
         # Extract update parameters from message
         params = {}

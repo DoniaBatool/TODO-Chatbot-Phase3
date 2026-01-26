@@ -520,21 +520,41 @@ async def chat(
                         f"Reply 'yes' to confirm or 'no' to cancel."
                     )
                 elif detected_intent.operation == "update_ask":
-                    # User wants to update but didn't provide details - ask what to update
-                    # Ensure task details include explicit "Task #id" when possible for context extraction
-                    if not task_details and detected_intent.task_title:
-                        task_details = f" '{detected_intent.task_title}'"
-                    confirmation_msg = (
-                        f"📝 Task{task_details} — what would you like to update?\n\n"
-                        f"You can reply like:\n"
-                        f"• title to Buy groceries\n"
-                        f"• priority to high\n"
-                        f"• due date to Jan 20, 2026 3 PM\n"
-                        f"• remove due date\n"
-                        f"• description: ...\n"
-                        f"• mark as complete / mark as incomplete\n\n"
-                        f"Tell me the changes, then I'll confirm and apply them."
-                    )
+                    # User wants to update but didn't provide task or details - ask which task first
+                    if not detected_intent.task_id and not detected_intent.task_title:
+                        # No task specified - ask which task to update
+                        list_params = ListTasksParams(user_id=user_id, status="all")
+                        list_result = list_tasks(db, list_params)
+                        if list_result.tasks:
+                            task_list = "\n".join([f"  • #{t['task_id']}: {t['title']}" for t in list_result.tasks[:10]])
+                            confirmation_msg = (
+                                f"📝 Kaunsa task update karna hai? (Which task would you like to update?)\n\n"
+                                f"Here are your current tasks:\n{task_list}\n\n"
+                                f"Please specify the task by ID (e.g., #70) or title (e.g., 'buy groceries')."
+                            )
+                        else:
+                            confirmation_msg = (
+                                f"📝 Kaunsa task update karna hai? (Which task would you like to update?)\n\n"
+                                f"You don't have any tasks to update."
+                            )
+                    else:
+                        # Task specified but no update details - ask what to update
+                        # Ensure task details include explicit "Task #id" when possible for context extraction
+                        if not task_details and detected_intent.task_title:
+                            task_details = f" '{detected_intent.task_title}'"
+                        elif not task_details and detected_intent.task_id:
+                            task_details = f" #{detected_intent.task_id}"
+                        confirmation_msg = (
+                            f"📝 Task{task_details} — what would you like to update?\n\n"
+                            f"You can reply like:\n"
+                            f"• title to Buy groceries\n"
+                            f"• priority to high\n"
+                            f"• due date to Jan 20, 2026 3 PM\n"
+                            f"• remove due date\n"
+                            f"• description: ...\n"
+                            f"• mark as complete / mark as incomplete\n\n"
+                            f"Tell me the changes, then I'll confirm and apply them."
+                        )
                 elif detected_intent.operation == "delete_ask":
                     # User wants to delete but didn't specify which task - ask which task
                     list_params = ListTasksParams(user_id=user_id, status="all")

@@ -48,17 +48,42 @@ def parse_natural_date(date_str: str) -> Optional[datetime]:
         return None
 
     date_str = date_str.strip()
+    current_time = datetime.now()
 
-    # Try ISO format first
+    # CRITICAL: Check for natural language keywords FIRST (before dateutil parser)
+    # This prevents "tomorrow" from being incorrectly parsed as "Nov 29, 2023"
+    natural_language_keywords = ['tomorrow', 'today', 'yesterday', 'next', 'this', 'in']
+    if any(keyword in date_str.lower() for keyword in natural_language_keywords):
+        # Try parsedatetime for natural language FIRST
+        try:
+            time_struct, parse_status = cal.parse(date_str, sourceTime=current_time)
+            if parse_status in [1, 2, 3]:  # Successfully parsed
+                parsed = datetime(*time_struct[:6])
+                logger.info(f"Parsed natural date '{date_str}' as {parsed} (relative to {current_time})")
+                return parsed
+        except Exception as e:
+            logger.warning(f"Failed to parse natural language date '{date_str}': {e}")
+
+    # Try ISO format
     try:
         return datetime.fromisoformat(date_str)
     except (ValueError, TypeError):
         pass
 
-    # Try dateutil parser (handles many formats)
+    # Try parsedatetime for other natural language (if not already tried)
+    if not any(keyword in date_str.lower() for keyword in natural_language_keywords):
+        try:
+            time_struct, parse_status = cal.parse(date_str, sourceTime=current_time)
+            if parse_status in [1, 2, 3]:  # Successfully parsed
+                parsed = datetime(*time_struct[:6])
+                logger.info(f"Parsed date '{date_str}' as {parsed} (relative to {current_time})")
+                return parsed
+        except Exception as e:
+            logger.warning(f"Failed to parse date with parsedatetime '{date_str}': {e}")
+
+    # Try dateutil parser LAST (handles many formats but can misparse natural language)
     try:
         # CRITICAL FIX: Set default year to current year to avoid parsing "Nov 29" as 2023
-        current_time = datetime.now()
         parsed = dateutil_parser.parse(
             date_str,
             fuzzy=True,
@@ -84,19 +109,6 @@ def parse_natural_date(date_str: str) -> Optional[datetime]:
         return parsed
     except (ValueError, TypeError, ParserError):
         pass
-
-    # Try parsedatetime for natural language
-    try:
-        # CRITICAL: Pass current time as sourceTime for accurate relative date parsing
-        # Without this, "tomorrow" might be calculated from stale reference date
-        current_time = datetime.now()
-        time_struct, parse_status = cal.parse(date_str, sourceTime=current_time)
-        if parse_status in [1, 2, 3]:  # Successfully parsed
-            parsed = datetime(*time_struct[:6])
-            logger.info(f"Parsed natural date '{date_str}' as {parsed} (relative to {current_time})")
-            return parsed
-    except Exception as e:
-        logger.warning(f"Failed to parse date '{date_str}': {e}")
 
     return None
 
