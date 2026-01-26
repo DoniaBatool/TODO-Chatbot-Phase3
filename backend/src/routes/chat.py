@@ -1030,6 +1030,21 @@ async def chat(
                         extra={"user_id": user_id, "task_id": task_id}
                     )
 
+            # Handle LIST intent (show tasks)
+            elif detected_intent.operation == "list":
+                # FORCE list_tasks execution
+                forced_tool_calls.append({
+                    'tool': 'list_tasks',
+                    'params': {
+                        'status': detected_intent.params.get('status', 'all')
+                    }
+                })
+
+                logger.info(
+                    f"FORCED LIST: status={detected_intent.params.get('status', 'all')}",
+                    extra={"user_id": user_id, "status": detected_intent.params.get('status', 'all')}
+                )
+
             # Handle INCOMPLETE intent (mark as not done/pending)
             elif detected_intent.operation == "incomplete" and not detected_intent.needs_confirmation:
                 task_id = detected_intent.task_id
@@ -1131,8 +1146,8 @@ async def chat(
         # BUT: If we have confirmed forced tool calls, skip AI agent to avoid errors
         skip_ai_agent = False
         if forced_tool_calls:
-            # Check if all forced tool calls are confirmed operations (add, update, delete, complete, incomplete)
-            confirmed_operations = ['add_task', 'update_task', 'delete_task', 'complete_task']
+            # Check if all forced tool calls are confirmed operations (add, update, delete, complete, incomplete, list)
+            confirmed_operations = ['add_task', 'update_task', 'delete_task', 'complete_task', 'list_tasks']
             skip_ai_agent = all(
                 tool_call.get('tool') in confirmed_operations 
                 for tool_call in forced_tool_calls

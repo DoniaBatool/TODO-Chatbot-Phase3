@@ -83,6 +83,22 @@ class IntentDetector:
         re.compile(r'set\s+(?:task\s+)?.*?\s+to\s+(?:incomplete|pending)', re.IGNORECASE),
     ]
 
+    # Patterns for ADD intent
+    ADD_PATTERNS = [
+        re.compile(r'add\s+(?:a\s+)?(?:new\s+)?task', re.IGNORECASE),
+        re.compile(r'create\s+(?:a\s+)?(?:new\s+)?task', re.IGNORECASE),
+        re.compile(r'new\s+task', re.IGNORECASE),
+    ]
+
+    # Patterns for LIST intent
+    LIST_PATTERNS = [
+        re.compile(r'(?:show|list|display)\s+(?:all\s+)?(?:my\s+)?tasks', re.IGNORECASE),
+        re.compile(r'(?:show|list|display)\s+(?:all\s+)?(?:my\s+)?task\s+list', re.IGNORECASE),
+        re.compile(r'what\s+tasks\s+do\s+i\s+have', re.IGNORECASE),
+        re.compile(r'view\s+(?:all\s+)?(?:my\s+)?tasks', re.IGNORECASE),
+        re.compile(r'get\s+(?:all\s+)?(?:my\s+)?tasks', re.IGNORECASE),
+    ]
+
     # Priority keywords
     PRIORITY_MAP = {
         'high': ['high', 'urgent', 'important', 'critical', 'asap', 'zaruri'],
@@ -161,6 +177,14 @@ class IntentDetector:
         # STEP 5: Check for INCOMPLETE intent
         if self._matches_any_pattern(message, self.INCOMPLETE_PATTERNS):
             return self._detect_incomplete_intent(message, message_lower, conversation_history)
+
+        # STEP 6: Check for ADD intent
+        if self._matches_any_pattern(message, self.ADD_PATTERNS):
+            return self._detect_add_intent(message, message_lower, conversation_history)
+
+        # STEP 7: Check for LIST intent
+        if self._matches_any_pattern(message, self.LIST_PATTERNS):
+            return self._detect_list_intent(message, message_lower, conversation_history)
 
         return None
 
@@ -1271,6 +1295,57 @@ class IntentDetector:
             task_title=task_title,
             params={"completed": False},
             needs_confirmation=True  # Always ask before marking incomplete
+        )
+
+
+    def _detect_add_intent(
+        self,
+        message: str,
+        message_lower: str,
+        conversation_history: List[Dict[str, str]]
+    ) -> Optional[Intent]:
+        """Detect ADD intent and extract task details.
+        
+        This doesn't force tool execution yet, just returns the intent
+        so the chat.py can handle the multi-turn conversation flow.
+        """
+        logger.info("Detected ADD intent")
+        
+        # Return intent with operation "add"
+        # chat.py will handle asking for title, priority, etc.
+        return Intent(
+            operation="add",
+            task_id=None,
+            task_title=None,
+            params={},
+            needs_confirmation=False  # AI agent will handle the conversation
+        )
+
+
+    def _detect_list_intent(
+        self,
+        message: str,
+        message_lower: str,
+        conversation_history: List[Dict[str, str]]
+    ) -> Optional[Intent]:
+        """Detect LIST intent and extract filter parameters."""
+        logger.info("Detected LIST intent")
+        
+        # Check for status filters
+        status = "all"
+        if "completed" in message_lower or "done" in message_lower:
+            status = "completed"
+        elif "incomplete" in message_lower or "pending" in message_lower or "active" in message_lower:
+            status = "active"
+        
+        # Return intent with operation "list"
+        # This will force execution of list_tasks tool
+        return Intent(
+            operation="list",
+            task_id=None,
+            task_title=None,
+            params={"status": status},
+            needs_confirmation=False  # Execute immediately, no confirmation needed
         )
 
 
