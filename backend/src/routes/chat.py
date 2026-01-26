@@ -424,7 +424,12 @@ async def chat(
         if detected_intent:
             logger.info(
                 f"Intent detected: {detected_intent}",
-                extra={"user_id": user_id, "intent": str(detected_intent)}
+                extra={"user_id": user_id, "intent": str(detected_intent), "operation": detected_intent.operation}
+            )
+        else:
+            logger.info(
+                f"No intent detected for message: '{request.message}'",
+                extra={"user_id": user_id, "message": request.message}
             )
 
             # Check if confirmation is needed
@@ -1054,37 +1059,45 @@ async def chat(
 
             # Handle ADD intent (create task)
             elif detected_intent.operation == "add":
-                # User wants to add a task but didn't provide title
-                # Ask for the task title
-                add_msg = (
-                    "Sure! I'd be happy to help you add a task. "
-                    "What's the title of the task you'd like to add?"
-                )
-                
-                conversation_service.add_message(
-                    conversation_id=conversation_id,
-                    user_id=user_id,
-                    role="user",
-                    content=request.message
-                )
-                conversation_service.add_message(
-                    conversation_id=conversation_id,
-                    user_id=user_id,
-                    role="assistant",
-                    content=add_msg
-                )
-                conversation_service.update_conversation_timestamp(conversation_id)
-                
-                logger.info(
-                    f"ADD intent detected - asking for task title",
-                    extra={"user_id": user_id}
-                )
-                
-                return ChatResponse(
-                    conversation_id=conversation_id,
-                    response=add_msg,
-                    tool_calls=[]
-                )
+                try:
+                    # User wants to add a task but didn't provide title
+                    # Ask for the task title
+                    add_msg = (
+                        "Sure! I'd be happy to help you add a task. "
+                        "What's the title of the task you'd like to add?"
+                    )
+                    
+                    conversation_service.add_message(
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        role="user",
+                        content=request.message
+                    )
+                    conversation_service.add_message(
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        role="assistant",
+                        content=add_msg
+                    )
+                    conversation_service.update_conversation_timestamp(conversation_id)
+                    
+                    logger.info(
+                        f"ADD intent detected - asking for task title",
+                        extra={"user_id": user_id, "message": request.message}
+                    )
+                    
+                    return ChatResponse(
+                        conversation_id=conversation_id,
+                        response=add_msg,
+                        tool_calls=[]
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Error handling ADD intent: {e}",
+                        exc_info=True,
+                        extra={"user_id": user_id, "message": request.message}
+                    )
+                    raise  # Re-raise to be caught by outer exception handler
 
             # Handle INCOMPLETE intent (mark as not done/pending)
             elif detected_intent.operation == "incomplete" and not detected_intent.needs_confirmation:
