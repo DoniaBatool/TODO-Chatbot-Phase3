@@ -402,8 +402,8 @@ export default function ChatPage() {
 
         {/* Main Chat Area - Add left margin on desktop when sidebar is open */}
         <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-0'}`}>
-          {/* Top Bar - Fixed at top */}
-          <div className={`border-b border-theme bg-theme-surface/80 backdrop-blur px-3 sm:px-4 py-3 flex items-center justify-between fixed top-0 z-50 transition-all duration-300 ${sidebarOpen ? 'md:left-64' : 'left-0'} right-0`}>
+          {/* Top Bar - Fixed below Header */}
+          <div className={`border-b border-theme bg-theme-surface/80 backdrop-blur px-3 sm:px-4 py-3 flex items-center justify-between fixed top-16 z-40 transition-all duration-300 ${sidebarOpen ? 'md:left-64' : 'left-0'} right-0`}>
             <div className="flex items-center gap-2">
               <button
                 onClick={(e) => {
@@ -435,8 +435,8 @@ export default function ChatPage() {
             <div className="w-9"></div>
           </div>
 
-          {/* Messages Area - Add padding-top for fixed header */}
-          <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6 mt-[60px]">
+          {/* Messages Area - Add padding-top for fixed Header and top bar */}
+          <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6 mt-[112px]">
             <div className="mx-auto w-full max-w-4xl space-y-4">
             {messages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
