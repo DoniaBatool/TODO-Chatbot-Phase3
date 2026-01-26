@@ -10,6 +10,7 @@
 
 # MCP Server Configuration (contains API keys and tokens)
 .claude/.mcp.json
+.cursor/.mcp.json
 .mcp.json
 *.mcp.json
 
@@ -35,6 +36,7 @@ wheels/
 *.egg
 MANIFEST
 venv/
+.venv/
 env/
 ENV/
 env.bak/
@@ -74,6 +76,7 @@ mysql-data/
 # IDE
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~
@@ -146,3 +149,7 @@ TODO-phase2-backup/
 *-backup/
 RENDER_DEPLOYMENT_GUIDE.md
 VERCEL_DEPLOYMENT_GUIDE.md
+
+# SkillPort Tool (configuration and skills cache)
+.skillport/
+.skillportrc
