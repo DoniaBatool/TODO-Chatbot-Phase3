@@ -1,12 +1,22 @@
 # AI Chat Assistant - Testing Instructions
 
-## 🐛 Bug Fixed ✅
+## 🐛 Bugs Fixed ✅
 
-**Issue:** All operations were failing with "Sorry, I encountered an error"
+**1. All operations failing with "Sorry, I encountered an error"**
+- **Cause:** `detected_intent.needs_confirmation` was read when `detected_intent` was `None` (wrong branch).
+- **Fix:** Confirmation check moved inside `if detected_intent:`.
 
-**Root Cause:** Critical indentation bug in `backend/src/routes/chat.py` where code tried to access `detected_intent.needs_confirmation` when `detected_intent` was `None`.
+**2. "add task" created a task titled "add task" instead of asking for title**
+- **Cause:** When assistant asked "What's the title?" and user replied "add task", that was used as the title.
+- **Fix:** Command phrases ("add task", "create task", "new task") are rejected as titles in intent_detector and in chat.py.
 
-**Fix:** Moved the confirmation check inside the correct `if detected_intent:` block.
+**3. "update task" assumed last task (e.g. 72) without asking "which task?"**
+- **Cause:** Context from older messages was used to infer task_id for a bare "update task".
+- **Fix:** Bare "update task" / "update the task" always returns `update_ask` and never uses context.
+
+**4. After deleting task 72, "update task" still said "task 72 - what to update?"**
+- **Cause:** Same context logic used stale task_id from history.
+- **Fix:** Bare "update task" no longer uses context; it always asks "which task?" and shows the current task list from the DB.
 
 ---
 
@@ -21,7 +31,7 @@ source venv/bin/activate
 python -m pytest tests/test_chat_operations.py::TestIntentDetector -v
 ```
 
-**Result:** ✅ **12/12 tests PASSED**
+**Result:** ✅ **16/16 tests PASSED** (including add/update/list behaviour tests)
 
 ### 2. Operation Tests
 ```bash

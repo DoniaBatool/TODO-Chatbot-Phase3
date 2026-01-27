@@ -179,6 +179,53 @@ class TestIntentDetector:
         # Should return None, chat.py handles cancellation separately
         assert intent is None
 
+    def test_add_task_reply_add_task_not_used_as_title(self):
+        """When assistant asked for title and user replies 'add task', must NOT create task titled 'add task'."""
+        history = [
+            {"role": "user", "content": "add task"},
+            {"role": "assistant", "content": "What's the title of the task you'd like to add?"}
+        ]
+        intent = detect_user_intent("add task", history)
+        # Must either ask again (add with no title) or reject: must NOT be add with title "add task"
+        if intent is not None and intent.operation == "add":
+            assert intent.params.get("title") != "add task", "Must not use 'add task' as task title"
+            assert intent.params.get("title") is None or intent.params.get("title").lower() != "add task"
+
+    def test_update_task_bare_always_ask_which_task(self):
+        """'update task' with no task in message must return update_ask and never assume from context."""
+        # Even with history that mentions task 72, bare "update task" must ask which task
+        history = [
+            {"role": "user", "content": "delete task 72"},
+            {"role": "assistant", "content": "🗑️ Kya aap sure hain k task #72 delete karna hai?"},
+            {"role": "user", "content": "yes"},
+            {"role": "assistant", "content": "✅ I've removed task #72."}
+        ]
+        intent = detect_user_intent("update task", history)
+        assert intent is not None
+        assert intent.operation == "update_ask"
+        assert intent.task_id is None
+        assert intent.task_title is None
+
+    def test_update_task_bare_no_context_assumption(self):
+        """'update task' must not pull task 72 from old context when user said only 'update task'."""
+        history = [
+            {"role": "assistant", "content": "Task #72 mein kya update karna hai?"}
+        ]
+        # User says only "update task" (new request) - must ask which task, not assume 72
+        intent = detect_user_intent("update task", history)
+        assert intent is not None
+        assert intent.operation == "update_ask"
+        assert intent.task_id is None
+
+    def test_show_all_tasks_detected_and_list_operation(self):
+        """'show all tasks' and 'show task list' must be list intent and trigger list_tasks (status all)."""
+        for msg in ["show all tasks", "show task list", "list my tasks"]:
+            intent = detect_user_intent(msg, [])
+            assert intent is not None, f"Failed for message: {msg}"
+            assert intent.operation == "list", f"Wrong operation for: {msg}"
+            assert intent.params.get("status") == "all"
+            assert intent.needs_confirmation == False
+
 
 # ============================================================================
 # API ENDPOINT TESTS (Integration Tests)

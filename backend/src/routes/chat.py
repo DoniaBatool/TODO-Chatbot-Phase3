@@ -1071,7 +1071,7 @@ async def chat(
 
             # Handle LIST intent (show tasks)
             elif detected_intent.operation == "list":
-                # FORCE list_tasks execution
+                # FORCE list_tasks execution (user_id from auth in execution loop)
                 forced_tool_calls.append({
                     'tool': 'list_tasks',
                     'params': {
@@ -1090,6 +1090,15 @@ async def chat(
                     title = None
                     if detected_intent.params:
                         title = detected_intent.params.get("title")
+
+                    # Never use command phrases as task title (e.g. user replied "add task" to "what's the title?")
+                    ADD_COMMAND_PHRASES = frozenset([
+                        'add task', 'create task', 'new task',
+                        'add a task', 'create a task', 'new a task',
+                        'add new task', 'create new task'
+                    ])
+                    if title and (title.strip().lower() in ADD_COMMAND_PHRASES):
+                        title = None
 
                     if title:
                         # User already provided title - force add_task execution

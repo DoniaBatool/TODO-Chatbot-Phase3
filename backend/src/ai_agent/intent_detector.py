@@ -376,15 +376,25 @@ class IntentDetector:
                     task_title = re.sub(r'^(task\s+title\s+is|task\s+title:|title:|it\s+is|it\'s)\s+', '', task_title, flags=re.IGNORECASE)
                     task_title = task_title.strip()
 
+                    # Reject command phrases used as title (user re-sent "add task" etc.)
+                    ADD_COMMAND_PHRASES = frozenset([
+                        'add task', 'create task', 'new task',
+                        'add a task', 'create a task', 'new a task',
+                        'add new task', 'create new task'
+                    ])
                     if task_title and len(task_title) >= 2:
-                        logger.info(f"Detected add follow-up title: '{task_title}'")
-                        return Intent(
-                            operation="add",
-                            task_id=None,
-                            task_title=None,
-                            params={"title": task_title},
-                            needs_confirmation=False
-                        )
+                        if task_title.lower() in ADD_COMMAND_PHRASES:
+                            logger.info(f"Rejecting add command as title: '{task_title}'")
+                            pass  # fall through, do not return this as title
+                        else:
+                            logger.info(f"Detected add follow-up title: '{task_title}'")
+                            return Intent(
+                                operation="add",
+                                task_id=None,
+                                task_title=None,
+                                params={"title": task_title},
+                                needs_confirmation=False
+                            )
 
                 # Patterns indicating assistant is asking for task specification
                 asking_patterns = [
@@ -796,6 +806,18 @@ class IntentDetector:
 
         # Normalize bullets and separators
         message_lower = message_lower.replace('•', ',')
+
+        # Bare "update task" / "update the task": ALWAYS ask which task first, never use context.
+        bare_update = re.match(r'^update\s+(?:the\s+)?task\s*[\.!?]?\s*$', message_lower.strip())
+        if bare_update:
+            logger.info("Bare 'update task' detected - returning update_ask, no context")
+            return Intent(
+                operation="update_ask",
+                task_id=None,
+                task_title=None,
+                params=None,
+                needs_confirmation=True
+            )
 
         # Extract task identifier (ID or title)
         task_id = self._extract_task_id(message)
