@@ -426,11 +426,6 @@ async def chat(
                 f"Intent detected: {detected_intent}",
                 extra={"user_id": user_id, "intent": str(detected_intent), "operation": detected_intent.operation}
             )
-        else:
-            logger.info(
-                f"No intent detected for message: '{request.message}'",
-                extra={"user_id": user_id, "message": request.message}
-            )
 
             # Check if confirmation is needed
             # If needs_confirmation=True, BYPASS AI and ask confirmation ourselves
@@ -575,6 +570,38 @@ async def chat(
                         confirmation_msg = (
                             f"🗑️ Kaunsa task delete karna hai? (Which task would you like to delete?)\n\n"
                             f"You don't have any tasks to delete."
+                        )
+                elif detected_intent.operation == "complete_ask":
+                    # User wants to complete but didn't specify which task - ask which task
+                    list_params = ListTasksParams(user_id=user_id, status="all")
+                    list_result = list_tasks(db, list_params)
+                    if list_result.tasks:
+                        task_list = "\n".join([f"  • #{t['task_id']}: {t['title']}" for t in list_result.tasks[:10]])
+                        confirmation_msg = (
+                            f"✅ Kaunsa task complete mark karna hai? (Which task would you like to mark as complete?)\n\n"
+                            f"Here are your current tasks:\n{task_list}\n\n"
+                            f"Please specify the task by ID (e.g., #70) or title (e.g., 'buy groceries')."
+                        )
+                    else:
+                        confirmation_msg = (
+                            f"✅ Kaunsa task complete mark karna hai? (Which task would you like to mark as complete?)\n\n"
+                            f"You don't have any tasks to update."
+                        )
+                elif detected_intent.operation == "incomplete_ask":
+                    # User wants to mark incomplete but didn't specify which task - ask which task
+                    list_params = ListTasksParams(user_id=user_id, status="all")
+                    list_result = list_tasks(db, list_params)
+                    if list_result.tasks:
+                        task_list = "\n".join([f"  • #{t['task_id']}: {t['title']}" for t in list_result.tasks[:10]])
+                        confirmation_msg = (
+                            f"⏳ Kaunsa task incomplete mark karna hai? (Which task would you like to mark as incomplete?)\n\n"
+                            f"Here are your current tasks:\n{task_list}\n\n"
+                            f"Please specify the task by ID (e.g., #70) or title (e.g., 'buy groceries')."
+                        )
+                    else:
+                        confirmation_msg = (
+                            f"⏳ Kaunsa task incomplete mark karna hai? (Which task would you like to mark as incomplete?)\n\n"
+                            f"You don't have any tasks to update."
                         )
                 else:
                     confirmation_msg = "Kya aap sure hain? (Are you sure?)\n\nReply 'yes' to confirm or 'no' to cancel."
@@ -1060,37 +1087,61 @@ async def chat(
             # Handle ADD intent (create task)
             elif detected_intent.operation == "add":
                 try:
-                    # User wants to add a task but didn't provide title
-                    # Ask for the task title
-                    add_msg = (
-                        "Sure! I'd be happy to help you add a task. "
-                        "What's the title of the task you'd like to add?"
-                    )
-                    
-                    conversation_service.add_message(
-                        conversation_id=conversation_id,
-                        user_id=user_id,
-                        role="user",
-                        content=request.message
-                    )
-                    conversation_service.add_message(
-                        conversation_id=conversation_id,
-                        user_id=user_id,
-                        role="assistant",
-                        content=add_msg
-                    )
-                    conversation_service.update_conversation_timestamp(conversation_id)
-                    
-                    logger.info(
-                        f"ADD intent detected - asking for task title",
-                        extra={"user_id": user_id, "message": request.message}
-                    )
-                    
-                    return ChatResponse(
-                        conversation_id=conversation_id,
-                        response=add_msg,
-                        tool_calls=[]
-                    )
+                    title = None
+                    if detected_intent.params:
+                        title = detected_intent.params.get("title")
+
+                    if title:
+                        # User already provided title - force add_task execution
+                        add_params = {
+                            "title": title
+                        }
+                        # Pass through optional fields if present
+                        for key in ["description", "priority", "due_date"]:
+                            if key in (detected_intent.params or {}):
+                                add_params[key] = detected_intent.params.get(key)
+
+                        forced_tool_calls.append({
+                            "tool": "add_task",
+                            "params": add_params
+                        })
+
+                        logger.info(
+                            f"FORCED ADD: title={title}",
+                            extra={"user_id": user_id, "title": title}
+                        )
+                    else:
+                        # User wants to add a task but didn't provide title
+                        # Ask for the task title
+                        add_msg = (
+                            "Sure! I'd be happy to help you add a task. "
+                            "What's the title of the task you'd like to add?"
+                        )
+                        
+                        conversation_service.add_message(
+                            conversation_id=conversation_id,
+                            user_id=user_id,
+                            role="user",
+                            content=request.message
+                        )
+                        conversation_service.add_message(
+                            conversation_id=conversation_id,
+                            user_id=user_id,
+                            role="assistant",
+                            content=add_msg
+                        )
+                        conversation_service.update_conversation_timestamp(conversation_id)
+                        
+                        logger.info(
+                            f"ADD intent detected - asking for task title",
+                            extra={"user_id": user_id, "message": request.message}
+                        )
+                        
+                        return ChatResponse(
+                            conversation_id=conversation_id,
+                            response=add_msg,
+                            tool_calls=[]
+                        )
                 except Exception as e:
                     logger.error(
                         f"Error handling ADD intent: {e}",
