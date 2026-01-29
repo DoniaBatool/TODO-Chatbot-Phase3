@@ -45,6 +45,17 @@ class DateParser:
     # Confidence threshold below which GPT fallback is triggered
     GPT_FALLBACK_THRESHOLD = 0.6
 
+    # Time of day mappings
+    TIME_OF_DAY = {
+        'morning': (9, 0),      # 9:00 AM
+        'noon': (12, 0),        # 12:00 PM
+        'afternoon': (14, 0),   # 2:00 PM
+        'evening': (18, 0),     # 6:00 PM
+        'night': (20, 0),       # 8:00 PM
+        'tonight': (20, 0),     # 8:00 PM
+        'midnight': (23, 59),   # 11:59 PM
+    }
+
     def __init__(self, use_gpt_fallback: bool = True):
         """
         Initialize date parser with default settings.
@@ -61,6 +72,111 @@ class DateParser:
             'RELATIVE_BASE': datetime.now(),  # Base for relative dates
             'STRICT_PARSING': False  # Allow flexible parsing
         }
+
+    def _preprocess_date_string(self, date_string: str) -> str:
+        """
+        Preprocess date string to handle complex patterns.
+
+        Handles:
+        - "tomorrow morning" → "tomorrow at 9am"
+        - "tonight at 8" → "today at 8pm"
+        - "next friday at 2:30pm" → normalized format
+
+        Args:
+            date_string: Original date string
+
+        Returns:
+            Preprocessed date string
+        """
+        import re
+        text = date_string.lower().strip()
+
+        # Handle "tonight" - replace with "today" and ensure PM
+        if text.startswith('tonight'):
+            text = text.replace('tonight', 'today', 1)
+            # If just "tonight", add default time
+            if text.strip() == 'today':
+                text = 'today at 8pm'
+            # If "tonight at X", ensure PM
+            elif 'at' in text and not ('am' in text or 'pm' in text):
+                text = text + 'pm'
+
+        # Handle time of day words (morning, afternoon, evening, night)
+        for time_word, (hour, minute) in self.TIME_OF_DAY.items():
+            if time_word in text and time_word != 'tonight':  # tonight handled above
+                # Replace "tomorrow morning" with "tomorrow at 9am"
+                am_pm = 'am' if hour < 12 else 'pm'
+                display_hour = hour if hour <= 12 else hour - 12
+                if display_hour == 0:
+                    display_hour = 12
+                text = text.replace(time_word, f'at {display_hour}{am_pm}')
+
+        # Handle "at X" without am/pm - assume PM for hours 1-7, AM for 8-11
+        at_match = re.search(r'at\s+(\d{1,2})(?::(\d{2}))?\s*$', text)
+        if at_match:
+            hour = int(at_match.group(1))
+            minutes = at_match.group(2) or '00'
+            if hour >= 1 and hour <= 7:
+                text = re.sub(r'at\s+(\d{1,2})(:\d{2})?\s*$', f'at {hour}:{minutes}pm', text)
+            elif hour >= 8 and hour <= 11:
+                text = re.sub(r'at\s+(\d{1,2})(:\d{2})?\s*$', f'at {hour}:{minutes}am', text)
+
+        return text
+
+    def _parse_day_with_time(self, date_string: str) -> Optional[datetime]:
+        """
+        Parse patterns like "next friday at 2:30pm" by splitting day and time.
+
+        Args:
+            date_string: Date string with day and time
+
+        Returns:
+            Parsed datetime or None
+        """
+        import re
+
+        # Pattern: [next] [day] at [time]
+        pattern = r'(next\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?'
+        match = re.match(pattern, date_string.lower().strip())
+
+        if not match:
+            return None
+
+        is_next = match.group(1) is not None
+        day_name = match.group(2)
+        hour = int(match.group(3))
+        minute = int(match.group(4)) if match.group(4) else 0
+        am_pm = match.group(5)
+
+        # Determine AM/PM if not specified
+        if not am_pm:
+            am_pm = 'pm' if hour >= 1 and hour <= 7 else 'am'
+
+        # Convert to 24-hour format
+        if am_pm == 'pm' and hour != 12:
+            hour += 12
+        elif am_pm == 'am' and hour == 12:
+            hour = 0
+
+        # Find the next occurrence of the day
+        day_map = {
+            'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+            'friday': 4, 'saturday': 5, 'sunday': 6
+        }
+        target_day = day_map[day_name]
+        today = datetime.now()
+        current_day = today.weekday()
+
+        days_ahead = target_day - current_day
+        if days_ahead <= 0:  # Target day already happened this week
+            days_ahead += 7
+        if is_next and days_ahead <= 7:
+            # "next friday" means the friday of next week if today is before friday
+            if days_ahead < 7:
+                days_ahead += 7
+
+        target_date = today + timedelta(days=days_ahead)
+        return datetime(target_date.year, target_date.month, target_date.day, hour, minute)
 
     @property
     def openai_client(self):
@@ -114,6 +230,12 @@ class DateParser:
             )
 
         date_string = str(date_string).strip()
+        original_string = date_string  # Keep original for error messages
+
+        # Preprocess to handle complex patterns
+        date_string = self._preprocess_date_string(date_string)
+        if date_string != original_string.lower().strip():
+            logger.debug(f"Preprocessed '{original_string}' → '{date_string}'")
 
         # Configure settings for this parse
         settings = self.dateparser_settings.copy()
@@ -124,13 +246,17 @@ class DateParser:
             # Parse using dateparser library
             parsed_date = dateparser.parse(date_string, settings=settings)
 
+            # If dateparser fails, try custom day+time parser
+            if parsed_date is None:
+                parsed_date = self._parse_day_with_time(original_string)
+
             if parsed_date is None:
                 return DateParseResult(
                     success=False,
                     parsed_date=None,
                     confidence=0.0,
-                    error_message=f"Could not parse date: '{date_string}'",
-                    original_text=date_string
+                    error_message=f"Could not parse date: '{original_string}'",
+                    original_text=original_string
                 )
 
             # Validation 1: Reject past dates

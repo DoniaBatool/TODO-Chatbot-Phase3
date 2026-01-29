@@ -82,13 +82,13 @@ async def get_latest_conversation(
 
         return {
             "conversation_id": conversation.id,
-            "created_at": conversation.created_at.isoformat(),
-            "updated_at": conversation.updated_at.isoformat(),
+            "created_at": conversation.created_at.isoformat() + "Z",  # Add Z for UTC
+            "updated_at": conversation.updated_at.isoformat() + "Z",
             "messages": [
                 {
                     "role": msg.role,
                     "content": msg.content,
-                    "created_at": msg.created_at.isoformat()
+                    "created_at": msg.created_at.isoformat() + "Z"  # Add Z for UTC
                 }
                 for msg in messages
             ]
@@ -152,7 +152,7 @@ async def get_conversation_messages(
                 {
                     "role": msg.role,
                     "content": msg.content,
-                    "created_at": msg.created_at.isoformat()
+                    "created_at": msg.created_at.isoformat() + "Z"  # Add Z for UTC
                 }
                 for msg in messages
             ]
@@ -454,8 +454,9 @@ async def chat(
                 # Add optional fields if present
                 if "priority" in updated_state:
                     add_params["priority"] = updated_state["priority"]
-                if "due_date" in updated_state:
-                    add_params["due_date"] = updated_state["due_date"]
+                # Due date is stored as "due_date_parsed" (ISO format) by context_manager
+                if "due_date_parsed" in updated_state and updated_state["due_date_parsed"]:
+                    add_params["due_date"] = updated_state["due_date_parsed"]
                 if "description" in updated_state:
                     add_params["description"] = updated_state["description"]
 
