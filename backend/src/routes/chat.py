@@ -16,6 +16,7 @@ from ..ai_agent.runner import run_agent, AgentResponse
 from ..ai_agent.tools import register_tools
 from ..ai_agent.intent_detector import detect_user_intent
 from ..ai_agent.utils import parse_natural_date
+from ..ai_agent.context_manager import ContextManager
 from ..mcp_tools.add_task import add_task, AddTaskParams
 from ..mcp_tools.list_tasks import list_tasks, ListTasksParams
 from ..mcp_tools.complete_task import complete_task, CompleteTaskParams
@@ -350,6 +351,226 @@ async def chat(
             }
             for msg in history_messages
         ]
+
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # ADDING_TASK STATE MANAGEMENT - MULTI-TURN WORKFLOW
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # Check if we're in ADDING_TASK workflow
+        # If yes, handle multi-turn conversation: confirm → priority → deadline → description → create
+
+        context_manager = ContextManager(conversation_service)
+        current_state = context_manager.get_current_state(conversation_id, user_id)
+
+        if current_state and current_state.get('current_intent') == 'ADDING_TASK':
+            logger.info(
+                f"User in ADDING_TASK workflow: step={current_state.get('state_data', {}).get('step')}",
+                extra={"user_id": user_id, "conversation_id": conversation_id, "state": current_state}
+            )
+
+            # Collect information for current step
+            state_data = current_state.get('state_data', {})
+            updated_state, next_step = context_manager.collect_add_task_information(
+                conversation_id=conversation_id,
+                user_id=user_id,
+                user_message=request.message,
+                current_state=state_data
+            )
+
+            # Handle cancellation
+            if next_step == "cancel":
+                context_manager.reset_state_after_completion(conversation_id, user_id)
+                cancel_msg = "❌ Add task cancelled. No task was created."
+
+                conversation_service.add_message(
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    role="user",
+                    content=request.message
+                )
+                conversation_service.add_message(
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    role="assistant",
+                    content=cancel_msg
+                )
+                conversation_service.update_conversation_timestamp(conversation_id)
+
+                return ChatResponse(
+                    conversation_id=conversation_id,
+                    response=cancel_msg,
+                    tool_calls=[]
+                )
+
+            # Handle intent switching
+            if next_step == "switch_intent":
+                context_manager.reset_state_after_completion(conversation_id, user_id)
+                # Continue to normal intent detection below
+
+            # Handle task creation
+            elif next_step == "create":
+                # All information collected, create the task
+                logger.info(
+                    f"Creating task with collected information",
+                    extra={"user_id": user_id, "state_data": updated_state}
+                )
+
+                # T029: Validate state_data completeness before creating task
+                title = updated_state.get("title")
+                if not title or not title.strip():
+                    error_msg = "❌ Cannot create task: title is required"
+                    logger.error(
+                        "Task creation failed - missing title",
+                        extra={"user_id": user_id, "state_data": updated_state}
+                    )
+
+                    conversation_service.add_message(
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        role="user",
+                        content=request.message
+                    )
+                    conversation_service.add_message(
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        role="assistant",
+                        content=error_msg
+                    )
+                    conversation_service.update_conversation_timestamp(conversation_id)
+
+                    # Reset state
+                    context_manager.reset_state_after_completion(conversation_id, user_id)
+
+                    return ChatResponse(
+                        conversation_id=conversation_id,
+                        response=error_msg,
+                        tool_calls=[]
+                    )
+
+                # Build add_task params from state_data
+                add_params = {
+                    "title": title.strip()
+                }
+
+                # Add optional fields if present
+                if "priority" in updated_state:
+                    add_params["priority"] = updated_state["priority"]
+                if "due_date" in updated_state:
+                    add_params["due_date"] = updated_state["due_date"]
+                if "description" in updated_state:
+                    add_params["description"] = updated_state["description"]
+
+                # Force add_task execution
+                try:
+                    params = AddTaskParams(
+                        user_id=user_id,
+                        **add_params
+                    )
+                    result = add_task(db, params)
+
+                    # Reset state to NEUTRAL
+                    context_manager.reset_state_after_completion(conversation_id, user_id)
+
+                    # Generate success message
+                    success_msg = f"✅ Task created successfully! Task #{result.task_id}: {result.title}"
+                    if result.priority:
+                        success_msg += f" ({result.priority} priority)"
+                    if result.due_date:
+                        success_msg += f", due {result.due_date.strftime('%B %d, %Y')}"
+
+                    # Store messages
+                    conversation_service.add_message(
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        role="user",
+                        content=request.message
+                    )
+                    conversation_service.add_message(
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        role="assistant",
+                        content=success_msg
+                    )
+                    conversation_service.update_conversation_timestamp(conversation_id)
+
+                    logger.info(
+                        f"Task created via multi-turn workflow: task_id={result.task_id}",
+                        extra={"user_id": user_id, "task_id": result.task_id}
+                    )
+
+                    return ChatResponse(
+                        conversation_id=conversation_id,
+                        response=success_msg,
+                        tool_calls=[{
+                            'tool': 'add_task',
+                            'params': add_params,
+                            'result': {
+                                'task_id': result.task_id,
+                                'title': result.title,
+                                'description': result.description,
+                                'priority': result.priority,
+                                'due_date': result.due_date.isoformat() if result.due_date else None,
+                                'completed': result.completed,
+                                'created_at': result.created_at.isoformat()
+                            }
+                        }]
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to create task in workflow: {e}", exc_info=True)
+                    error_msg = f"❌ Failed to create task: {str(e)}"
+
+                    conversation_service.add_message(
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        role="user",
+                        content=request.message
+                    )
+                    conversation_service.add_message(
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        role="assistant",
+                        content=error_msg
+                    )
+                    conversation_service.update_conversation_timestamp(conversation_id)
+
+                    return ChatResponse(
+                        conversation_id=conversation_id,
+                        response=error_msg,
+                        tool_calls=[]
+                    )
+
+            else:
+                # Continue workflow - generate prompt for next step
+                if next_step == "confirm":
+                    prompt_msg = f"Would you like to add the task: '{updated_state.get('title')}'? Reply 'yes' to continue or 'no' to cancel."
+                elif next_step == "priority":
+                    prompt_msg = "What priority should this task have? (high, medium, or low)"
+                elif next_step == "deadline":
+                    prompt_msg = "Would you like to set a deadline for this task? (e.g., 'tomorrow', 'next Friday', 'Jan 20', or 'no' to skip)"
+                elif next_step == "description":
+                    prompt_msg = "Would you like to add a description for this task? (Enter the description or 'no' to skip)"
+                else:
+                    prompt_msg = "Please continue..."
+
+                # Store messages
+                conversation_service.add_message(
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    role="user",
+                    content=request.message
+                )
+                conversation_service.add_message(
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    role="assistant",
+                    content=prompt_msg
+                )
+                conversation_service.update_conversation_timestamp(conversation_id)
+
+                return ChatResponse(
+                    conversation_id=conversation_id,
+                    response=prompt_msg,
+                    tool_calls=[]
+                )
 
         # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         # INTENT DETECTION MIDDLEWARE - FORCED TOOL EXECUTION
@@ -1084,7 +1305,7 @@ async def chat(
                     extra={"user_id": user_id, "status": detected_intent.params.get('status', 'all')}
                 )
 
-            # Handle ADD intent (create task)
+            # Handle ADD intent (create task) - Initialize multi-turn workflow
             elif detected_intent.operation == "add":
                 try:
                     title = None
@@ -1105,23 +1326,146 @@ async def chat(
                         title = None
 
                     if title:
-                        # User already provided title - force add_task execution
-                        add_params = {
-                            "title": title
-                        }
-                        # Pass through optional fields if present
-                        for key in ["description", "priority", "due_date"]:
-                            if key in (detected_intent.params or {}):
-                                add_params[key] = detected_intent.params.get(key)
+                        # User provided title - initialize ADDING_TASK workflow
+                        # Extract any optional fields provided upfront
+                        initial_priority = detected_intent.params.get("priority") if detected_intent.params else None
+                        initial_due_date = detected_intent.params.get("due_date") if detected_intent.params else None
+                        initial_description = detected_intent.params.get("description") if detected_intent.params else None
 
-                        forced_tool_calls.append({
-                            "tool": "add_task",
-                            "params": add_params
-                        })
+                        # Initialize ADD_TASK state
+                        state_data = context_manager.initialize_add_task_state(
+                            conversation_id=conversation_id,
+                            user_id=user_id,
+                            initial_title=title,
+                            initial_priority=initial_priority,
+                            initial_due_date=initial_due_date,
+                            initial_description=initial_description
+                        )
+
+                        # Generate prompt based on starting step
+                        current_step = state_data.get("step", "confirm")
+
+                        if current_step == "create":
+                            # All info provided, create task immediately
+                            # T029: Validate title is present
+                            if not title or not title.strip():
+                                error_msg = "❌ Cannot create task: title is required"
+                                logger.error(
+                                    "All-at-once task creation failed - missing title",
+                                    extra={"user_id": user_id, "title": title}
+                                )
+
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="user",
+                                    content=request.message
+                                )
+                                conversation_service.add_message(
+                                    conversation_id=conversation_id,
+                                    user_id=user_id,
+                                    role="assistant",
+                                    content=error_msg
+                                )
+                                conversation_service.update_conversation_timestamp(conversation_id)
+
+                                return ChatResponse(
+                                    conversation_id=conversation_id,
+                                    response=error_msg,
+                                    tool_calls=[]
+                                )
+
+                            add_params = {"title": title.strip()}
+                            if initial_priority:
+                                add_params["priority"] = initial_priority
+                            if initial_due_date:
+                                add_params["due_date"] = initial_due_date
+                            if initial_description:
+                                add_params["description"] = initial_description
+
+                            params = AddTaskParams(user_id=user_id, **add_params)
+                            result = add_task(db, params)
+
+                            # Reset state
+                            context_manager.reset_state_after_completion(conversation_id, user_id)
+
+                            success_msg = f"✅ Task created successfully! Task #{result.task_id}: {result.title}"
+                            if result.priority:
+                                success_msg += f" ({result.priority} priority)"
+                            if result.due_date:
+                                success_msg += f", due {result.due_date.strftime('%B %d, %Y')}"
+
+                            conversation_service.add_message(
+                                conversation_id=conversation_id,
+                                user_id=user_id,
+                                role="user",
+                                content=request.message
+                            )
+                            conversation_service.add_message(
+                                conversation_id=conversation_id,
+                                user_id=user_id,
+                                role="assistant",
+                                content=success_msg
+                            )
+                            conversation_service.update_conversation_timestamp(conversation_id)
+
+                            logger.info(
+                                f"Task created (all-at-once): task_id={result.task_id}",
+                                extra={"user_id": user_id, "task_id": result.task_id}
+                            )
+
+                            return ChatResponse(
+                                conversation_id=conversation_id,
+                                response=success_msg,
+                                tool_calls=[{
+                                    'tool': 'add_task',
+                                    'params': add_params,
+                                    'result': {
+                                        'task_id': result.task_id,
+                                        'title': result.title,
+                                        'description': result.description,
+                                        'priority': result.priority,
+                                        'due_date': result.due_date.isoformat() if result.due_date else None,
+                                        'completed': result.completed,
+                                        'created_at': result.created_at.isoformat()
+                                    }
+                                }]
+                            )
+                        elif current_step == "confirm":
+                            prompt_msg = f"Would you like to add the task: '{title}'? Reply 'yes' to continue or 'no' to cancel."
+                        elif current_step == "priority":
+                            prompt_msg = "What priority should this task have? (high, medium, or low)"
+                        elif current_step == "deadline":
+                            prompt_msg = "Would you like to set a deadline for this task? (e.g., 'tomorrow', 'next Friday', 'Jan 20', or 'no' to skip)"
+                        elif current_step == "description":
+                            prompt_msg = "Would you like to add a description for this task? (Enter the description or 'no' to skip)"
+                        else:
+                            prompt_msg = "Let's add this task step by step."
+
+                        # Store messages
+                        conversation_service.add_message(
+                            conversation_id=conversation_id,
+                            user_id=user_id,
+                            role="user",
+                            content=request.message
+                        )
+                        conversation_service.add_message(
+                            conversation_id=conversation_id,
+                            user_id=user_id,
+                            role="assistant",
+                            content=prompt_msg
+                        )
+                        conversation_service.update_conversation_timestamp(conversation_id)
 
                         logger.info(
-                            f"FORCED ADD: title={title}",
-                            extra={"user_id": user_id, "title": title}
+                            f"ADDING_TASK workflow initialized: step={current_step}",
+                            extra={"user_id": user_id, "title": title, "step": current_step}
+                        )
+
+                        return ChatResponse(
+                            conversation_id=conversation_id,
+                            response=prompt_msg,
+                            tool_calls=[]
                         )
                     else:
                         # User wants to add a task but didn't provide title
@@ -1130,7 +1474,7 @@ async def chat(
                             "Sure! I'd be happy to help you add a task. "
                             "What's the title of the task you'd like to add?"
                         )
-                        
+
                         conversation_service.add_message(
                             conversation_id=conversation_id,
                             user_id=user_id,
@@ -1144,12 +1488,12 @@ async def chat(
                             content=add_msg
                         )
                         conversation_service.update_conversation_timestamp(conversation_id)
-                        
+
                         logger.info(
                             f"ADD intent detected - asking for task title",
                             extra={"user_id": user_id, "message": request.message}
                         )
-                        
+
                         return ChatResponse(
                             conversation_id=conversation_id,
                             response=add_msg,

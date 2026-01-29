@@ -130,8 +130,13 @@ class Conversation(SQLModel, table=True):
     """
     Chat conversation between user and AI assistant.
 
-    Stores conversation metadata and timestamps for stateless architecture.
+    Stores conversation metadata, state tracking, and timestamps for stateless architecture.
     Messages are stored separately in the Message table.
+
+    State Fields (Phase 3 - Robust AI Assistant):
+    - current_intent: Tracks conversation flow state (NEUTRAL, ADDING_TASK, etc.)
+    - state_data: Stores collected information during multi-turn workflows
+    - target_task_id: References task being updated/deleted/completed
     """
 
     __tablename__ = "conversations"
@@ -153,6 +158,22 @@ class Conversation(SQLModel, table=True):
     updated_at: datetime = Field(
         default_factory=datetime.utcnow,
         description="Last message timestamp"
+    )
+
+    # Phase 3: Conversation State Tracking
+    current_intent: str = Field(
+        default="NEUTRAL",
+        max_length=50,
+        description="Current conversation state: NEUTRAL, ADDING_TASK, UPDATING_TASK, DELETING_TASK, COMPLETING_TASK, LISTING_TASKS"
+    )
+    state_data: Optional[Dict[str, Any]] = Field(
+        default=None,
+        sa_column=Column(JSON),
+        description="Collected information for current operation (e.g., partial task details)"
+    )
+    target_task_id: Optional[int] = Field(
+        default=None,
+        description="ID of task being updated/deleted/completed in current workflow"
     )
 
     # Relationships

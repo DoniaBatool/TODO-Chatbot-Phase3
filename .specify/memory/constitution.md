@@ -463,6 +463,7 @@ If no skill exists for required capability:
 **Usage**: Invoke via `Skill` tool with skill name (e.g., `/sp.mcp-tool-builder`)
 **Requirement**: MUST be used for ALL applicable work in Phase III+
 **Total Categories**: 8 (added Modern Architecture category)
+**Feature-Specific Skills**: See `.claude/skills/robust-ai-assistant/SKILL.md` for AI chatbot natural language workflows
 
 ---
 
@@ -491,7 +492,7 @@ If no skill exists for required capability:
 
 ---
 
-#### 2️⃣ Core Implementation Skills - Phase III (5 skills)
+#### 2️⃣ Core Implementation Skills - Phase III (6 skills)
 
 | Skill | When to Use | Tasks Covered | Constitution Principle |
 |-------|-------------|---------------|----------------------|
@@ -500,9 +501,11 @@ If no skill exists for required capability:
 | `/sp.chatbot-endpoint` | Creating stateless chat API | Chat endpoint with JWT validation | Principle II (Stateless), Principle V (Security) |
 | `/sp.conversation-manager` | Managing conversation state | Conversation/Message models, history | Principle III (Database-Centric State) |
 | `/sp.database-schema-expander` | Adding new database tables | New SQLModel models, migrations, indexes | Principle III (Database-Centric State) |
+| `/sp.robust-ai-assistant` | Natural language task management | Multi-turn workflows, intent recognition, date parsing, fuzzy matching | Principle II, III, VI (Stateless, DB-Centric, MCP) |
 
 **When user says**: "Add chat functionality" → Use `/sp.ai-agent-setup` + `/sp.chatbot-endpoint` + `/sp.conversation-manager`
 **When user says**: "Create add_task tool" → Use `/sp.mcp-tool-builder`
+**When user says**: "Make chatbot more conversational" → Use `/sp.robust-ai-assistant`
 
 ---
 
@@ -625,7 +628,8 @@ If no skill exists for required capability:
 3. `/sp.ai-agent-setup` → OpenAI Agents SDK configuration
 4. `/sp.chatbot-endpoint` → Stateless chat API
 5. `/sp.conversation-manager` → Conversation state management
-6. `/sp.edge-case-tester` → Comprehensive testing (auto-trigger)
+6. `/sp.robust-ai-assistant` → Natural language workflows, intent recognition, date parsing
+7. `/sp.edge-case-tester` → Comprehensive testing (auto-trigger)
 
 #### Scenario 2: "Add user authentication"
 **Required Skills** (Sequential):

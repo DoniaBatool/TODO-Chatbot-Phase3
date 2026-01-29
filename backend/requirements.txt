@@ -31,3 +31,11 @@ python-json-logger>=2.0.7
 thefuzz>=0.20.0
 python-dateutil>=2.8.2
 parsedatetime>=2.6
+
+# Phase 3: Robust AI Assistant Dependencies
+dateparser==1.2.0       # Natural language date parsing (more powerful than parsedatetime)
+rapidfuzz==3.6.0        # Fast fuzzy string matching (10-20x faster than thefuzz)
+pytest-mock==3.12.0     # Mocking framework for tests
+
+# Load Testing
+locust>=2.20.0          # Load testing framework for 100 concurrent users test

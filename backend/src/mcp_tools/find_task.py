@@ -4,6 +4,11 @@ Finds task by title for the authenticated user with fuzzy matching.
 
 This tool enables AI agents to find task IDs based on
 natural language task titles, with smart fuzzy matching for better results.
+
+Uses FuzzyMatcher utility (rapidfuzz) for:
+- Partial title matching ("milk" → "Buy milk from store")
+- Typo tolerance ("grocerys" → "groceries")
+- Confidence thresholds (70% single, 60% multiple)
 """
 
 from typing import Optional, List
@@ -12,7 +17,7 @@ from sqlmodel import Session, select
 import logging
 
 from ..models import Task
-from ..ai_agent.utils import fuzzy_match_task_title
+from ..utils.fuzzy_matcher import FuzzyMatcher
 
 logger = logging.getLogger(__name__)
 
@@ -118,21 +123,41 @@ def find_task(db: Session, params: FindTaskParams) -> Optional[FindTaskResult]:
 
     logger.info(f"find_task: Found {len(tasks)} tasks for user {params.user_id}")
 
-    # Create title mapping for fuzzy matching
-    task_map = {task.title: task for task in tasks}
-    task_titles = list(task_map.keys())
+    # Convert tasks to dictionary format for fuzzy matcher
+    task_dicts = [
+        {
+            "id": task.id,
+            "title": task.title,
+            "description": task.description or ""
+        }
+        for task in tasks
+    ]
 
-    # Perform fuzzy matching
-    matches = fuzzy_match_task_title(params.title, task_titles, threshold=60)
+    # Perform fuzzy matching with FuzzyMatcher
+    matcher = FuzzyMatcher()
+    match_result = matcher.find_matches(
+        query=params.title,
+        tasks=task_dicts,
+        single_match_threshold=70,
+        multiple_match_threshold=60,
+        max_results=1  # Only return best match
+    )
 
     # Handle no matches
-    if not matches:
+    if not match_result.success or not match_result.matches:
         logger.info(f"find_task: No fuzzy matches found for '{params.title}'")
         return None
 
-    # Get best match (highest score)
-    best_match_title, confidence_score = matches[0]
-    task = task_map[best_match_title]
+    # Get best match
+    best_match = match_result.matches[0]
+    task_id = best_match["task_id"]
+    confidence_score = int(best_match["score"])
+
+    # Find the actual task object
+    task = next((t for t in tasks if t.id == task_id), None)
+    if not task:
+        logger.error(f"find_task: Task {task_id} not found after fuzzy matching")
+        return None
 
     logger.info(
         f"find_task: Best match - task_id={task.id}, title='{task.title}', "

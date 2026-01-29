@@ -191,6 +191,111 @@ class ConversationService:
             self.db.add(conversation)
             self.db.commit()
 
+    def update_conversation_state(
+        self,
+        conversation_id: int,
+        user_id: str,
+        current_intent: Optional[str] = None,
+        state_data: Optional[Dict[str, Any]] = None,
+        target_task_id: Optional[int] = None
+    ) -> Optional[Conversation]:
+        """Update conversation state tracking fields.
+
+        Args:
+            conversation_id: ID of the conversation to update
+            user_id: ID of the authenticated user (for security)
+            current_intent: New intent state (e.g., "ADDING_TASK", "NEUTRAL")
+            state_data: Collected information for current operation
+            target_task_id: ID of task being updated/deleted/completed
+
+        Returns:
+            Updated Conversation object if found and owned by user, None otherwise
+
+        Security:
+            Only updates conversation if user_id matches owner.
+
+        Example:
+            >>> service.update_conversation_state(
+            ...     conversation_id=123,
+            ...     user_id="user-123",
+            ...     current_intent="ADDING_TASK",
+            ...     state_data={"title": "Buy milk"}
+            ... )
+        """
+        conversation = self.get_conversation(conversation_id, user_id)
+        if not conversation:
+            return None
+
+        # Update only provided fields
+        if current_intent is not None:
+            conversation.current_intent = current_intent
+        if state_data is not None:
+            conversation.state_data = state_data
+        if target_task_id is not None:
+            conversation.target_task_id = target_task_id
+
+        conversation.updated_at = datetime.utcnow()
+        self.db.add(conversation)
+        self.db.commit()
+        self.db.refresh(conversation)
+        return conversation
+
+    def reset_conversation_state(
+        self, conversation_id: int, user_id: str
+    ) -> Optional[Conversation]:
+        """Reset conversation state to neutral.
+
+        Args:
+            conversation_id: ID of the conversation to reset
+            user_id: ID of the authenticated user (for security)
+
+        Returns:
+            Updated Conversation object if found, None otherwise
+
+        Use Cases:
+            - After completing an operation (task added/updated/deleted)
+            - When user cancels an operation
+            - On error recovery
+
+        Example:
+            >>> service.reset_conversation_state(123, "user-123")
+        """
+        return self.update_conversation_state(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            current_intent="NEUTRAL",
+            state_data=None,
+            target_task_id=None
+        )
+
+    def get_conversation_state(
+        self, conversation_id: int, user_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Get current conversation state.
+
+        Args:
+            conversation_id: ID of the conversation
+            user_id: ID of the authenticated user
+
+        Returns:
+            Dictionary with current_intent, state_data, target_task_id if found
+            None if conversation doesn't exist or user doesn't own it
+
+        Example:
+            >>> state = service.get_conversation_state(123, "user-123")
+            >>> if state and state['current_intent'] == 'ADDING_TASK':
+            ...     print("User is adding a task")
+        """
+        conversation = self.get_conversation(conversation_id, user_id)
+        if not conversation:
+            return None
+
+        return {
+            "current_intent": conversation.current_intent,
+            "state_data": conversation.state_data,
+            "target_task_id": conversation.target_task_id
+        }
+
     @log_execution_time("get_user_conversations")
     def get_user_conversations(self, user_id: str) -> List[dict]:
         """Get all conversations for a user with message count.
