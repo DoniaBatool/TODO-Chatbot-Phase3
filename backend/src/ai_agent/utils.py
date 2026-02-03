@@ -64,9 +64,11 @@ def parse_natural_date(date_str: str) -> Optional[datetime]:
         except Exception as e:
             logger.warning(f"Failed to parse natural language date '{date_str}': {e}")
 
-    # Try ISO format
+    # Try ISO format (handle "Z" suffix for UTC timezone)
     try:
-        return datetime.fromisoformat(date_str)
+        # Handle "Z" suffix which fromisoformat doesn't support in Python < 3.11
+        clean_date_str = date_str.replace('Z', '+00:00') if date_str.endswith('Z') else date_str
+        return datetime.fromisoformat(clean_date_str)
     except (ValueError, TypeError):
         pass
 

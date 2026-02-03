@@ -1838,16 +1838,29 @@ async def chat(
                         if "completed" in tool_params:
                             update_kwargs["completed"] = tool_params.get("completed")
 
-                        # due_date can be missing (no change), null (remove), or ISO string (set)
+                        # due_date can be missing (no change), null (remove), or string (set)
+                        # Supports: ISO format, natural language ("tomorrow at 3pm"), and "Z" suffix
                         if "due_date" in tool_params:
                             due_date_str = tool_params.get("due_date")
                             if due_date_str is None:
                                 update_kwargs["due_date"] = None
+                                logger.info(f"update_task: Removing due_date (set to None)")
                             elif isinstance(due_date_str, str) and due_date_str.strip():
-                                try:
-                                    update_kwargs["due_date"] = datetime.fromisoformat(due_date_str)
-                                except (ValueError, TypeError):
-                                    raise ValueError(f"Invalid due_date format: {due_date_str}")
+                                # Try parse_natural_date first (handles natural language + ISO)
+                                parsed_date = parse_natural_date(due_date_str)
+                                if parsed_date:
+                                    update_kwargs["due_date"] = parsed_date
+                                    logger.info(f"update_task: Parsed due_date '{due_date_str}' → {parsed_date}")
+                                else:
+                                    # Fallback: Try ISO format with Z suffix handling
+                                    try:
+                                        # Handle "Z" suffix (UTC timezone indicator)
+                                        clean_date_str = due_date_str.replace('Z', '+00:00')
+                                        update_kwargs["due_date"] = datetime.fromisoformat(clean_date_str)
+                                        logger.info(f"update_task: Parsed ISO due_date '{due_date_str}'")
+                                    except (ValueError, TypeError) as e:
+                                        logger.error(f"update_task: Failed to parse due_date '{due_date_str}': {e}")
+                                        raise ValueError(f"Invalid due_date format: {due_date_str}. Use ISO 8601 format (e.g., '2026-01-15T14:30:00') or natural language (e.g., 'tomorrow at 3pm').")
 
                         params = UpdateTaskParams(**update_kwargs)
                         result = update_task(db, params)
@@ -1963,15 +1976,25 @@ async def chat(
                             }
                         )
 
-                        # Parse due_date if it's a string (natural language)
+                        # Parse due_date if it's a string (natural language or ISO)
                         due_date_value = tool_params.get('due_date')
                         if due_date_value and isinstance(due_date_value, str):
-                            # Parse natural language date
+                            due_date_value = due_date_value.strip()
+                            # Try parse_natural_date first (handles natural language + ISO)
                             parsed_date = parse_natural_date(due_date_value)
                             if parsed_date:
                                 due_date_value = parsed_date.isoformat()
+                                logger.info(f"set_task_deadline: Parsed due_date '{tool_params.get('due_date')}' → {due_date_value}")
                             else:
-                                logger.warning(f"Failed to parse date: {due_date_value}")
+                                # Fallback: Handle "Z" suffix for ISO dates
+                                try:
+                                    clean_date_str = due_date_value.replace('Z', '+00:00')
+                                    parsed = datetime.fromisoformat(clean_date_str)
+                                    due_date_value = parsed.isoformat()
+                                    logger.info(f"set_task_deadline: Parsed ISO due_date '{tool_params.get('due_date')}' → {due_date_value}")
+                                except (ValueError, TypeError) as e:
+                                    logger.error(f"set_task_deadline: Failed to parse date '{due_date_value}': {e}")
+                                    raise ValueError(f"Invalid due_date format: {due_date_value}. Use ISO 8601 format or natural language.")
 
                         params = SetTaskDeadlineParams(
                             user_id=user_id,
