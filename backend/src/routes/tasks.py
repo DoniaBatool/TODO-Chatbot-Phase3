@@ -200,6 +200,8 @@ async def update_task(
         if "due_date" in fields_set:
             # Allow setting a new due date or clearing it by sending null
             task.due_date = task_data.due_date
+        if "completed" in fields_set:
+            task.completed = task_data.completed  # type: ignore[assignment]
 
         # Update timestamp
         task.updated_at = datetime.utcnow()

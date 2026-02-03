@@ -7,7 +7,7 @@ import { Task } from '@/lib/types';
 import { Alert } from './Alert';
 
 type Props = {
-  onSubmit: (payload: { title: string; description?: string; priority?: string; due_date?: string }) => Promise<void> | void;
+  onSubmit: (payload: { title: string; description?: string; priority?: string; due_date?: string; completed?: boolean }) => Promise<void> | void;
   initialTask?: Task | null;
   loading?: boolean;
 };
@@ -17,6 +17,7 @@ export function TaskForm({ onSubmit, initialTask = null, loading = false }: Prop
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
   const [dueDate, setDueDate] = useState('');
+  const [completed, setCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -24,6 +25,7 @@ export function TaskForm({ onSubmit, initialTask = null, loading = false }: Prop
       setTitle(initialTask.title || '');
       setDescription(initialTask.description || '');
       setPriority(initialTask.priority || 'medium');
+      setCompleted(initialTask.completed || false);
 
       // Format due_date for datetime-local input
       if (initialTask.due_date) {
@@ -42,6 +44,7 @@ export function TaskForm({ onSubmit, initialTask = null, loading = false }: Prop
       setDescription('');
       setPriority('medium');
       setDueDate('');
+      setCompleted(false);
     }
   }, [initialTask]);
 
@@ -66,7 +69,8 @@ export function TaskForm({ onSubmit, initialTask = null, loading = false }: Prop
       title,
       description: description || undefined,
       priority,
-      due_date: dueDateISO
+      due_date: dueDateISO,
+      ...(initialTask ? { completed } : {})  // Only include completed when editing
     });
 
     if (!initialTask) {
@@ -119,6 +123,20 @@ export function TaskForm({ onSubmit, initialTask = null, loading = false }: Prop
           onChange={(e) => setDueDate(e.target.value)}
         />
       </label>
+      {/* Show completed toggle only when editing */}
+      {initialTask && (
+        <label className="flex items-center gap-3 text-sm cursor-pointer py-2">
+          <input
+            type="checkbox"
+            checked={completed}
+            onChange={(e) => setCompleted(e.target.checked)}
+            className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+          />
+          <span className="text-theme-primary font-medium">
+            {completed ? '✅ Completed' : '⏳ Mark as Completed'}
+          </span>
+        </label>
+      )}
       {error ? <Alert variant="error">{error}</Alert> : null}
       <div className="flex flex-col sm:flex-row gap-2">
         <Button type="submit" disabled={loading}>

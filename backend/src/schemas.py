@@ -72,6 +72,10 @@ class TaskUpdate(BaseModel):
         default=None,
         description="Updated task due date and time (optional)"
     )
+    completed: Optional[bool] = Field(
+        default=None,
+        description="Task completion status"
+    )
 
     @field_validator("title")
     @classmethod

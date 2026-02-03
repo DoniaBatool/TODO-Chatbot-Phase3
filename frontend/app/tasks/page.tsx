@@ -94,7 +94,7 @@ export default function TasksPage() {
     }
   }
 
-  async function handleUpdate(payload: { title: string; description?: string; priority?: string; due_date?: string }) {
+  async function handleUpdate(payload: { title: string; description?: string; priority?: string; due_date?: string; completed?: boolean }) {
     if (!editing) return;
     setActioning(true);
     setError(null);
