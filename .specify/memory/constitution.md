@@ -730,6 +730,161 @@ End every feature with security and testing:
 - ✅ After new API endpoint → **SHOULD** use `/sp.pydantic-validation`
 - ✅ After any feature completion → **SUGGEST** `/sp.ab-testing` for validation
 - ✅ After architecture changes → **SUGGEST** `/sp.adr` (Architecture Decision Record)
+- 🧠 **After ANY feature completion → MUST auto-run `/sp.skill-learner`** (NON-NEGOTIABLE)
+
+### 🧠 MANDATORY: Skill-Learner After Every Feature (RELIGIOUS ENFORCEMENT)
+
+**This is NON-NEGOTIABLE. Feature is NOT complete until skill-learner runs.**
+
+#### Complete Feature Implementation Workflow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 1: SKILL PLAN (Before ANY implementation)                 │
+├─────────────────────────────────────────────────────────────────┤
+│  📋 Feature: [Feature Name]                                     │
+│                                                                 │
+│  Skills Required:                                               │
+│  1. /sp.skill-name-1 → [purpose]                                │
+│  2. /sp.skill-name-2 → [purpose]                                │
+│  3. /sp.skill-name-3 → [purpose]                                │
+│                                                                 │
+│  Waiting for approval... ✋                                     │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 2: SKILL EXECUTION (Show EACH skill being used)           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  🔧 Using Skill: /sp.skill-name-1                               │
+│  Purpose: [what this skill does]                                │
+│  Files Generated:                                               │
+│    - path/to/file1.py                                           │
+│    - path/to/file2.py                                           │
+│  ✅ Skill Complete                                              │
+│                                                                 │
+│  🔧 Using Skill: /sp.skill-name-2                               │
+│  Purpose: [what this skill does]                                │
+│  ✅ Skill Complete                                              │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 3: FEATURE IMPLEMENTATION COMPLETE                        │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  STEP 4: AUTO-CALL SKILL-LEARNER (MANDATORY - NOT OPTIONAL!)    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  🧠 Skill Learning Session                                      │
+│                                                                 │
+│  Feature Completed: [Feature Name]                              │
+│  Skills Used:                                                   │
+│    - /sp.skill-name-1                                           │
+│    - /sp.skill-name-2                                           │
+│                                                                 │
+│  Learnings Captured:                                            │
+│    - Bug Fix: [description] → Added to /sp.skill-name-1         │
+│    - Pattern: [description] → Added to /sp.skill-name-2         │
+│    - Edge Case: [description] → Added test to skill             │
+│                                                                 │
+│  Skills Updated:                                                │
+│    ✅ /sp.skill-name-1 (added bug fix pattern)                  │
+│    ✅ /sp.skill-name-2 (added new pattern)                      │
+│                                                                 │
+│  🧠 Skills Evolution Complete                                   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### What Skill-Learner Must Capture
+
+After EVERY feature, skill-learner MUST check for:
+
+| Category | Question | Action |
+|----------|----------|--------|
+| **Bug Fixes** | Did you fix any bugs during implementation? | Add solution pattern to relevant skill |
+| **Edge Cases** | Did you discover edge cases not in skill? | Add test case to skill |
+| **Patterns** | Did you discover a better approach? | Document in skill |
+| **Code Templates** | Did you write reusable code? | Add as template to skill |
+| **Corrections** | Was original skill guidance wrong? | Correct the skill |
+
+#### VIOLATIONS (Will be Rejected)
+
+❌ **VIOLATION 1:** Implementing feature without using skills
+```text
+User: "Add authentication"
+Claude: [Creates auth code manually without using /sp.jwt-authentication]
+
+❌ REJECTED - Must use skills
+```
+
+❌ **VIOLATION 2:** Not showing skill names during execution
+```text
+Claude: [Implements feature using skills but doesn't show which skills]
+
+❌ REJECTED - Must show: "🔧 Using Skill: /sp.skill-name"
+```
+
+❌ **VIOLATION 3:** Not calling skill-learner after feature
+```text
+Claude: "Feature complete!"
+[Does not call /sp.skill-learner]
+
+❌ REJECTED - Feature NOT complete until skill-learner runs
+```
+
+#### CORRECT Implementation Example
+
+```text
+User: "Add date parsing to the chatbot"
+
+Claude:
+  📋 Feature: Natural Language Date Parsing
+
+  Skills Required:
+  1. /sp.robust-ai-assistant → Date parsing patterns
+  2. /sp.edge-case-tester → Test edge cases
+
+  Waiting for approval... ✋
+
+User: "Approved"
+
+Claude:
+  🔧 Using Skill: /sp.robust-ai-assistant
+  Purpose: Implement date parsing with natural language support
+  Files Generated:
+    - backend/src/utils/date_parser.py
+    - backend/tests/test_date_parser.py
+  ✅ Skill Complete
+
+  🔧 Using Skill: /sp.edge-case-tester
+  Purpose: Test date parsing edge cases
+  Tests Added: 25 test cases
+  ✅ Skill Complete
+
+  ✅ Feature Implementation Complete
+
+  🧠 Skill Learning Session
+
+  Feature Completed: Natural Language Date Parsing
+  Skills Used:
+    - /sp.robust-ai-assistant
+    - /sp.edge-case-tester
+
+  Learnings Captured:
+    - Bug Fix: "Z" suffix parsing in Python <3.11 → Added to /sp.robust-ai-assistant
+    - Pattern: Time-of-day words preprocessing → Added to /sp.robust-ai-assistant
+    - Edge Case: Dates with commas (Feb 6, 2026) → Added test
+
+  Skills Updated:
+    ✅ /sp.robust-ai-assistant (added Date/Time Best Practices section)
+
+  🧠 Skills Evolution Complete
+
+  ✅ FEATURE FULLY COMPLETE (Skills Used + Skills Updated)
+```
 
 ### ⚡ Enforcement Mechanism
 
@@ -807,27 +962,32 @@ violations: None
 
 **Violations include:**
 - ❌ Implementing features manually when skills exist
-- ❌ No terminal output showing skill usage
+- ❌ No terminal output showing skill usage (must show "🔧 Using Skill: /sp.skill-name")
 - ❌ No skill execution plan before starting work
 - ❌ Not creating skills for reusable capabilities
 - ❌ PHR/commits without skills usage documentation
 - ❌ Proceeding without user approval of skill plan
+- ❌ **NOT calling `/sp.skill-learner` after feature completion** (CRITICAL!)
+- ❌ **Saying "Feature Complete" without skill-learner running**
 
 **Consequences of violations:**
 - ⚠️ Work must be redone using proper skill-based approach
 - ⚠️ Constitution updated to prevent future violations
 - ⚠️ Skills created retroactively for violated implementations
+- ⚠️ **Feature marked as INCOMPLETE until skill-learner runs**
 
 ### ✅ Skill-Based Development Checklist
 
 Before considering ANY Phase III+ feature complete:
 - [ ] Skill execution plan created and approved
-- [ ] Terminal output shows which skills were used
+- [ ] Terminal output shows which skills were used ("🔧 Using Skill: /sp.skill-name")
 - [ ] All applicable skills invoked (or new skills created)
 - [ ] Skills usage documented in PHR
 - [ ] Skills usage mentioned in commit message
 - [ ] No manual implementation where skills exist
 - [ ] Constitution principles enforced via skills
+- [ ] **🧠 `/sp.skill-learner` called after implementation** (MANDATORY!)
+- [ ] **Learnings captured and skills updated** (MANDATORY!)
 
 **Remember: Skills are NOT optional. They are MANDATORY for all Phase III+ development.**
 

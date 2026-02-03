@@ -204,23 +204,57 @@ cat .claude/skills/jwt-authentication/SKILL.md
 
 ## 🔧 Development Guidelines
 
-### ⚠️ CRITICAL: SKILL-FIRST APPROACH (MANDATORY)
+### ⚠️ CRITICAL: SKILL-FIRST APPROACH (MANDATORY - RELIGIOUS ENFORCEMENT)
 
-**BEFORE implementing ANY feature:**
-1. ✅ Check `.claude/skills/` for applicable skills
-2. ✅ Display skill plan and wait for user approval
-3. ✅ Execute using Skill tool
-4. ❌ NEVER implement manually if skill exists
+**Complete Feature Implementation Workflow:**
 
-**Terminal output MANDATORY:**
 ```
-🔧 Using Skill: /sp.skill-name
-Purpose: [purpose]
-Files Generated: [list]
-✅ Skill Complete
+┌─────────────────────────────────────────────────────────────┐
+│  PHASE 1: SKILL IDENTIFICATION (Before ANY code)            │
+├─────────────────────────────────────────────────────────────┤
+│  1. Check `.claude/skills/` for applicable skills           │
+│  2. Display skill plan with names                           │
+│  3. Wait for user approval                                  │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  PHASE 2: SKILL EXECUTION (Show each skill being used)      │
+├─────────────────────────────────────────────────────────────┤
+│  🔧 Using Skill: /sp.skill-name                             │
+│  Purpose: [what this skill does]                            │
+│  Files Generated: [list of files]                           │
+│  ✅ Skill Complete                                          │
+│                                                             │
+│  🔧 Using Skill: /sp.another-skill                          │
+│  Purpose: [what this skill does]                            │
+│  ✅ Skill Complete                                          │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  PHASE 3: FEATURE COMPLETE                                  │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  PHASE 4: AUTO-CALL SKILL-LEARNER (MANDATORY)               │
+├─────────────────────────────────────────────────────────────┤
+│  🧠 Skill Learning Session                                  │
+│  Feature: [feature name]                                    │
+│  Skills Used: [list]                                        │
+│  Issues Fixed: [list if any]                                │
+│  Patterns Discovered: [list if any]                         │
+│  Skills Updated: [list]                                     │
+│  ✅ Skills Evolution Complete                               │
+└─────────────────────────────────────────────────────────────┘
 ```
+
+**RULES (Non-Negotiable):**
+1. ❌ **NEVER** implement manually if skill exists
+2. ✅ **ALWAYS** show skill name when using: `🔧 Using Skill: /sp.skill-name`
+3. ✅ **ALWAYS** call `/sp.skill-learner` after feature completion
+4. ❌ Feature is **NOT COMPLETE** until skill-learner runs
 
 **Enforcement:** Manual implementation when skill exists = VIOLATION
+**Enforcement:** Not calling skill-learner after feature = VIOLATION
 
 **📚 See:** `.claude/docs/skills-scenarios.md` for complete usage protocol
 
