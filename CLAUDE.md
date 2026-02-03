@@ -152,14 +152,14 @@ User: "Create a PR for my changes"
 
 ---
 
-## 🧠 Reusable Intelligence Skills (43 Total) - EXPANDED!
+## 🧠 Reusable Intelligence Skills (44 Total) - EXPANDED!
 
 **📚 Complete Reference:** See `.claude/docs/skills-reference.md`
 
 ### Categories Summary
 
 0. **🤖 Automation & Orchestration (1):** prompt-analyzer
-1. **Workflow & Planning (5):** new-feature, change-management, skill-creator, specify, plan
+1. **Workflow & Planning (6):** new-feature, change-management, skill-creator, **skill-learner** 🆕, specify, plan
 2. **Core Implementation (5):** mcp-tool-builder, ai-agent-setup, chatbot-endpoint, conversation-manager, database-schema-expander
 3. **Foundation Patterns (6):** jwt-authentication, password-security, user-isolation, pydantic-validation, connection-pooling, transaction-management
 4. **Role-Based (7):** backend-developer, frontend-developer, fullstack-architect, database-engineer, devops-engineer, security-engineer, uiux-designer
@@ -237,6 +237,12 @@ Files Generated: [list]
 
 3. **Human as Tool:** Invoke user for clarification, dependencies, architectural choices, completion checkpoints
 
+4. **🧠 Continuous Skill Learning (MANDATORY):** After EVERY feature implementation, update skills with learnings
+   - **When:** After fixing bugs, discovering patterns, finding edge cases
+   - **How:** Use `/sp.skill-learner` to capture and update skills
+   - **Goal:** Skills evolve and become smarter with each project
+   - **Example:** Date parsing issues → Update `/sp.robust-ai-assistant` with solutions
+
 ---
 
 ### Default Policies
@@ -300,5 +306,21 @@ Files Generated: [list]
 - **Constitution principles** → `.specify/memory/constitution.md`
 - **Always create PHRs** after completing work
 - **Suggest ADRs** for significant decisions
+- **🧠 Update skills with learnings** - Use `/sp.skill-learner` after every feature
 
-**Success = Skill-based development + PHR tracking + Constitution compliance**
+**Success = Skill-based development + PHR tracking + Skill Learning + Constitution compliance**
+
+---
+
+## 🧠 Skill Learning Reminder
+
+**After completing ANY feature, ask yourself:**
+
+1. Did I fix any bugs? → Add solution to relevant skill
+2. Did I discover a new pattern? → Document in skill
+3. Did I find an edge case? → Add test case to skill
+4. Did I create reusable code? → Add template to skill
+
+**Run:** `/sp.skill-learner` to capture and update skills
+
+**Goal:** Never solve the same problem twice. Once solved, it lives in a skill forever.

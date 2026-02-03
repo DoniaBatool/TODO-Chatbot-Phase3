@@ -1176,6 +1176,100 @@ Skills Plan:
 [Execute skills via database-engineer agent]
 ```
 
+---
+
+## 🧠 Continuous Skill Learning (MANDATORY)
+
+### ⚠️ CRITICAL REQUIREMENT - SKILLS MUST EVOLVE
+
+**After EVERY feature implementation, skills MUST be updated with learnings.**
+
+This is a "Learning Loop" that makes skills smarter and more powerful over time.
+
+### 🔄 Learning Loop Workflow
+
+```
+Feature Implementation
+    ↓
+Issues/Bugs Encountered
+    ↓
+Solutions Developed
+    ↓
+🧠 /sp.skill-learner → Updates relevant skills
+    ↓
+Skills become smarter for future projects
+```
+
+### 📋 When to Update Skills
+
+Skills MUST be updated when:
+
+1. **Bug Fix** - A date parsing issue fixed → Update skill with the fix pattern
+2. **New Pattern** - Discovered better way to handle something → Add to skill
+3. **Edge Case** - Found edge case not covered → Add test case to skill
+4. **Correction** - Original skill guidance was wrong → Correct it
+5. **Enhancement** - Feature worked but could be better → Improve skill
+
+### 🔧 How to Update Skills
+
+Use `/sp.skill-learner` skill after completing features:
+
+```text
+🧠 Skill Learning Session
+
+Feature Completed: Robust AI Assistant
+Issues Encountered:
+  1. Date "Z" suffix parsing failed in Python <3.11
+  2. "tomorrow morning" not parsed by dateparser
+  3. Regex comma terminator broke dates like "Feb 6, 2026"
+
+Skills to Update:
+  - /sp.robust-ai-assistant → Add Date/Time Best Practices section
+
+Learning Captured: ✅
+Skill Updated: ✅
+```
+
+### 📊 Skill Update Categories
+
+| Category | What to Add | Example |
+|----------|-------------|---------|
+| **Bug Fixes** | Problem + Solution + Code | "Z" suffix handling |
+| **Edge Cases** | Scenario + Test | Empty input handling |
+| **Best Practices** | Pattern + Rationale | Unified parsing function |
+| **Code Templates** | Reusable code | DateParser class |
+| **Checklists** | Implementation checklist | Date/time checklist |
+| **Test Scenarios** | pytest/Jest tests | Date parsing tests |
+
+### 🚫 Skill Update Violations
+
+**Violations include:**
+- ❌ Completing feature without updating relevant skills
+- ❌ Fixing bugs but not documenting in skill
+- ❌ Discovering patterns but not adding to skills
+- ❌ Creating workarounds instead of improving skills
+
+### ✅ Skill Learning Checklist
+
+After EVERY feature implementation:
+- [ ] Identify learnings (bugs fixed, patterns discovered, edge cases)
+- [ ] Identify which skill(s) should be updated
+- [ ] Use `/sp.skill-learner` to update skill(s)
+- [ ] Verify skill now includes the learning
+- [ ] Document skill update in PHR
+
+### 🎯 Goal
+
+**Skills should become a "knowledge base" that:**
+- Captures ALL learnings from ALL projects
+- Provides ready-to-use solutions for common problems
+- Eliminates the need to solve same problems repeatedly
+- Makes future AI assistant projects faster and more robust
+
+**Remember: Skills are living documents. They MUST evolve with every project.**
+
+---
+
 ### 📊 Agent Usage Tracking (MANDATORY)
 
 **PHR Template Requirement:**
